@@ -167,7 +167,7 @@ const AdminAssessments = () => {
 
     const openCreateTemplate = () => {
         setEditingTemplate(null);
-        setTemplateForm({ title: '', questions: [{ id: Date.now(), text: '', type: 'text' }] });
+        setTemplateForm({ title: '', questions: [{ id: Date.now(), text: '', type: 'text', max_score: 10 }] });
         setShowTemplateModal(true);
     };
 
@@ -231,7 +231,7 @@ const AdminAssessments = () => {
     const addQuestion = () => {
         setTemplateForm({
             ...templateForm,
-            questions: [...templateForm.questions, { id: Date.now(), text: '', type: 'text' }]
+            questions: [...templateForm.questions, { id: Date.now(), text: '', type: 'text', max_score: 10 }]
         });
     };
 
@@ -246,10 +246,16 @@ const AdminAssessments = () => {
     };
 
     const openEditAssessment = (assessment) => {
-        // Format dates for datetime-local input
+        // Format dates for datetime-local input (YYYY-MM-DDTHH:mm)
         const formatDateForInput = (dateStr) => {
+            if (!dateStr) return '';
             const d = new Date(dateStr);
-            return d.toISOString().slice(0, 16);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
         };
         setEditAssessmentForm({
             title: assessment.title,
@@ -280,7 +286,7 @@ const AdminAssessments = () => {
     const addEditQuestion = () => {
         setEditAssessmentForm(prev => ({
             ...prev,
-            questions: [...prev.questions, { id: Date.now(), text: '', type: 'text' }]
+            questions: [...prev.questions, { id: Date.now(), text: '', type: 'text', max_score: 10 }]
         }));
     };
 
@@ -294,7 +300,12 @@ const AdminAssessments = () => {
     const handleSaveAssessmentEdit = async (e) => {
         e.preventDefault();
         try {
-            await authAPI.updateAssessment(editingAssessment.id, editAssessmentForm);
+            const payload = {
+                ...editAssessmentForm,
+                start_date: new Date(editAssessmentForm.start_date).toISOString(),
+                end_date: new Date(editAssessmentForm.end_date).toISOString()
+            };
+            await authAPI.updateAssessment(editingAssessment.id, payload);
             setEditingAssessment(null);
             fetchAssessments();
             setPopup({ show: true, title: 'Updated', message: 'Assessment updated successfully!', type: 'success', mode: 'alert' });
@@ -373,6 +384,16 @@ const AdminAssessments = () => {
                                                 required
                                                 style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                                             />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                <label style={{ fontSize: '0.75rem', color: '#64748b' }}>Score:</label>
+                                                <input
+                                                    type="number"
+                                                    value={q.max_score || 10}
+                                                    onChange={(e) => handleQuestionChange(idx, 'max_score', parseInt(e.target.value) || 0)}
+                                                    style={{ width: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                                    min="0"
+                                                />
+                                            </div>
                                             <button type="button" onClick={() => removeQuestion(idx)} style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '0 0.5rem', cursor: 'pointer' }}>X</button>
                                         </div>
                                     </div>
@@ -801,6 +822,16 @@ const AdminAssessments = () => {
                                                 placeholder="Question text"
                                                 style={{ flex: 1, padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
                                             />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                <label style={{ fontSize: '0.75rem', color: '#64748b' }}>Score:</label>
+                                                <input
+                                                    type="number"
+                                                    value={q.max_score || 10}
+                                                    onChange={(e) => handleEditQuestionChange(idx, 'max_score', parseInt(e.target.value) || 0)}
+                                                    style={{ width: '55px', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                                    min="0"
+                                                />
+                                            </div>
                                             <select
                                                 value={q.type || 'text'}
                                                 onChange={(e) => handleEditQuestionChange(idx, 'type', e.target.value)}

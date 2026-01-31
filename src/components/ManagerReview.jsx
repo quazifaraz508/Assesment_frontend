@@ -81,6 +81,25 @@ const ManagerReview = () => {
                 if (data.disciplinary_actions) {
                     setDisciplinaryActions(data.disciplinary_actions);
                 }
+
+                // Load Drafts
+                const role = user?.role === 'admin' ? 'admin' : 'manager';
+                const draftKey = `review_draft_${submissionId}_${role}_${user?.id}`;
+                const savedDraft = localStorage.getItem(draftKey);
+                if (savedDraft) {
+                    try {
+                        const { ratings: draftRatings, remarks: draftRemarks } = JSON.parse(savedDraft);
+                        if (role === 'admin') {
+                            setAdminRatings(prev => ({ ...prev, ...draftRatings }));
+                            setAdminRemarks(prev => ({ ...prev, ...draftRemarks }));
+                        } else {
+                            setManagerRatings(prev => ({ ...prev, ...draftRatings }));
+                            setManagerRemarks(prev => ({ ...prev, ...draftRemarks }));
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse review draft", e);
+                    }
+                }
             } catch (err) {
                 console.error("Failed to fetch submission", err);
                 setError(err.response?.data?.error || 'Failed to load submission.');
@@ -92,7 +111,22 @@ const ManagerReview = () => {
         if (submissionId) {
             fetchSubmission();
         }
-    }, [submissionId]);
+    }, [submissionId, user?.role, user?.id]);
+
+    // Save Drafts
+    useEffect(() => {
+        if (!loading && submission) {
+            const role = user?.role === 'admin' ? 'admin' : 'manager';
+            const draftKey = `review_draft_${submissionId}_${role}_${user?.id}`;
+            const ratings = role === 'admin' ? adminRatings : managerRatings;
+            const remarks = role === 'admin' ? adminRemarks : managerRemarks;
+
+            // Only save if there's actually something to save
+            if (Object.keys(ratings).length > 0 || Object.keys(remarks).length > 0) {
+                localStorage.setItem(draftKey, JSON.stringify({ ratings, remarks }));
+            }
+        }
+    }, [managerRatings, managerRemarks, adminRatings, adminRemarks, loading, submission, submissionId, user?.role, user?.id]);
 
     // Calculate scores
     useEffect(() => {
@@ -113,8 +147,11 @@ const ManagerReview = () => {
     }, [submission]);
 
     const handleAdminRatingChange = (qId, val) => {
+        const question = submission?.assessment?.questions?.find(q => q.id.toString() === qId.toString()) ||
+            submission?.questions?.find(q => q.id.toString() === qId.toString());
+        const maxScore = question?.max_score || 10;
         const num = val === '' ? '' : parseFloat(val);
-        if (val === '' || (num >= 0 && num <= 10)) {
+        if (val === '' || (num >= 0 && num <= maxScore)) {
             setAdminRatings(prev => ({ ...prev, [qId]: num }));
         }
     };
@@ -125,8 +162,11 @@ const ManagerReview = () => {
 
     // Legacy handler for Manager (if user is manager)
     const handleManagerRatingChange = (qId, val) => {
+        const question = submission?.assessment?.questions?.find(q => q.id.toString() === qId.toString()) ||
+            submission?.questions?.find(q => q.id.toString() === qId.toString());
+        const maxScore = question?.max_score || 10;
         const num = val === '' ? '' : parseFloat(val);
-        if (val === '' || (num >= 0 && num <= 10)) {
+        if (val === '' || (num >= 0 && num <= maxScore)) {
             setManagerRatings(prev => ({ ...prev, [qId]: num }));
         }
     };
@@ -146,6 +186,10 @@ const ManagerReview = () => {
                     ratings: adminRatings,
                     remarks: adminRemarks
                 });
+
+                // Clear Draft
+                localStorage.removeItem(`review_draft_${submissionId}_admin_${user?.id}`);
+
                 setPopup({
                     show: true,
                     title: 'Success!',
@@ -193,6 +237,10 @@ const ManagerReview = () => {
                     ratings: managerRatings,
                     remarks: managerRemarks
                 });
+
+                // Clear Draft
+                localStorage.removeItem(`review_draft_${submissionId}_manager_${user?.id}`);
+
                 setPopup({
                     show: true,
                     title: 'Success!',
@@ -401,7 +449,7 @@ const ManagerReview = () => {
                                                 <div style={{ marginTop: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                     <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>SELF RATING:</div>
                                                     <div style={{ background: '#e0f2fe', color: '#0369a1', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: '600', fontSize: '0.9rem' }}>
-                                                        {selfRating} / 10
+                                                        {selfRating} / {q.max_score || 10}
                                                     </div>
                                                 </div>
                                             )}
@@ -419,12 +467,12 @@ const ManagerReview = () => {
 
                                         <div style={{ marginBottom: '1rem' }}>
                                             <label style={{ display: 'block', fontSize: '0.9rem', color: '#4b5563', marginBottom: '0.5rem' }}>
-                                                Rating (out of 10) <span style={{ color: '#ef4444' }}>*</span>
+                                                Rating (out of {q.max_score || 10}) <span style={{ color: '#ef4444' }}>*</span>
                                             </label>
                                             <div style={{ position: 'relative' }}>
                                                 <input
                                                     type="number"
-                                                    min="0" max="10" step="0.1"
+                                                    min="0" max={q.max_score || 10} step="0.1"
                                                     required={isManager}
                                                     disabled={isAdmin}
                                                     value={managerRatings[q.id] ?? ''}
@@ -436,7 +484,7 @@ const ManagerReview = () => {
                                                         background: isAdmin ? '#f9fafb' : 'white',
                                                         cursor: isAdmin ? 'not-allowed' : 'text'
                                                     }}
-                                                    placeholder="0-10"
+                                                    placeholder={`0-${q.max_score || 10}`}
                                                 />
                                                 <Star size={18} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#fbbf24' }} />
                                             </div>
@@ -468,12 +516,12 @@ const ManagerReview = () => {
 
                                             <div style={{ marginBottom: '1rem' }}>
                                                 <label style={{ display: 'block', fontSize: '0.9rem', color: '#4b5563', marginBottom: '0.5rem' }}>
-                                                    Admin Rating (out of 10) <span style={{ color: '#ef4444' }}>*</span>
+                                                    Admin Rating (out of {q.max_score || 10}) <span style={{ color: '#ef4444' }}>*</span>
                                                 </label>
                                                 <div style={{ position: 'relative' }}>
                                                     <input
                                                         type="number"
-                                                        min="0" max="10" step="0.1"
+                                                        min="0" max={q.max_score || 10} step="0.1"
                                                         required={isAdmin}
                                                         disabled={!isAdmin}
                                                         value={adminRatings[q.id] ?? ''}
@@ -485,7 +533,7 @@ const ManagerReview = () => {
                                                             background: !isAdmin ? '#f8fafc' : 'white',
                                                             cursor: !isAdmin ? 'not-allowed' : 'text'
                                                         }}
-                                                        placeholder="0-10"
+                                                        placeholder={`0-${q.max_score || 10}`}
                                                     />
                                                     <Star size={18} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#3b82f6' }} />
                                                 </div>
@@ -650,7 +698,7 @@ const ManagerReview = () => {
                                 <div style={{ paddingRight: '2rem', borderRight: '1px solid #334155' }}>
                                     <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Self Score</div>
                                     <div style={{ fontSize: '2rem', fontWeight: '800', color: '#10b981', lineHeight: 1, whiteSpace: 'nowrap' }}>
-                                        {selfScore.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: '400' }}>/ {submission.questions.length * 10}</span>
+                                        {selfScore.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: '400' }}>/ {submission.questions.reduce((acc, q) => acc + (q.max_score || 10), 0)}</span>
                                     </div>
                                 </div>
                             )}
@@ -658,7 +706,7 @@ const ManagerReview = () => {
                             <div style={{ paddingRight: (user?.is_staff) ? '2rem' : '0', borderRight: (user?.is_staff) ? '1px solid #334155' : 'none' }}>
                                 <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Manager Score</div>
                                 <div style={{ fontSize: '2rem', fontWeight: '800', color: '#fbbf24', lineHeight: 1, whiteSpace: 'nowrap' }}>
-                                    {displayManagerScore.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: '400' }}>/ {submission.questions.length * 10}</span>
+                                    {displayManagerScore.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: '400' }}>/ {submission.questions.reduce((acc, q) => acc + (q.max_score || 10), 0)}</span>
                                 </div>
                                 {totalDeduction < 0 && (
                                     <div style={{ fontSize: '0.75rem', color: '#f87171', marginTop: '0.2rem', fontWeight: '600' }}>
@@ -671,7 +719,7 @@ const ManagerReview = () => {
                                 <div>
                                     <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Admin Score</div>
                                     <div style={{ fontSize: '2rem', fontWeight: '800', color: '#38bdf8', lineHeight: 1, whiteSpace: 'nowrap' }}>
-                                        {displayAdminScore.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: '400' }}>/ {submission.questions.length * 10}</span>
+                                        {displayAdminScore.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: '400' }}>/ {submission.questions.reduce((acc, q) => acc + (q.max_score || 10), 0)}</span>
                                     </div>
                                     {totalDeduction < 0 && (
                                         <div style={{ fontSize: '0.75rem', color: '#f87171', marginTop: '0.2rem', fontWeight: '600' }}>
