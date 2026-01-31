@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
-import { ArrowLeft, Save, Star, MessageSquare } from 'lucide-react';
+import CustomPopup from './CustomPopup';
+import { Save, AlertCircle, CheckCircle, ArrowLeft, Star, MessageSquare, Trash2 } from 'lucide-react';
 import '../styles/Auth.css';
 
 const ManagerReview = () => {
@@ -29,6 +30,33 @@ const ManagerReview = () => {
     // Toggle for Admin to edit THEIR review
     const [adminEditMode, setAdminEditMode] = useState(false);
 
+    // Disciplinary Actions state
+    const [disciplinaryActions, setDisciplinaryActions] = useState([]);
+    const [showDisciplinaryForm, setShowDisciplinaryForm] = useState(false);
+    const [issuingAction, setIssuingAction] = useState(false);
+    const [actionForm, setActionForm] = useState({
+        type: '',
+        reason: ''
+    });
+
+    // Custom Popup State
+    const [popup, setPopup] = useState({
+        show: false,
+        title: '',
+        message: '',
+        type: 'info',
+        mode: 'alert',
+        onConfirm: null
+    });
+
+    const closePopup = () => setPopup(prev => ({ ...prev, show: false }));
+
+    const actionTypes = [
+        { id: 'warning', label: 'Official Issued Warning', deduction: 2, color: '#fbbf24' },
+        { id: 'memo', label: 'Issued Memo', deduction: 5, color: '#f87171' },
+        { id: 'suspend', label: 'Suspend', deduction: 10, color: '#b91c1c' }
+    ];
+
     useEffect(() => {
         const fetchSubmission = async () => {
             try {
@@ -48,6 +76,10 @@ const ManagerReview = () => {
                     setAdminRatings(data.admin_review.ratings || {});
                     setAdminRemarks(data.admin_review.remarks || {});
                     setAdminScore(data.admin_review.total_score || 0);
+                }
+
+                if (data.disciplinary_actions) {
+                    setDisciplinaryActions(data.disciplinary_actions);
                 }
             } catch (err) {
                 console.error("Failed to fetch submission", err);
@@ -105,43 +137,185 @@ const ManagerReview = () => {
 
     const handleSubmitAdminReview = async (e) => {
         e.preventDefault();
-        setSubmitting(true);
-        try {
-            await authAPI.submitAdminReview({
-                submission_id: parseInt(submissionId),
-                ratings: adminRatings,
-                remarks: adminRemarks
-            });
-            alert('Admin Review submitted successfully!');
-            // Reload or partial update? Reloading is safer.
-            window.location.reload();
-        } catch (err) {
-            console.error("Submission failed", err);
-            alert(err.response?.data?.error || 'Failed to submit review.');
-        } finally {
-            setSubmitting(false);
-        }
+
+        const confirmSubmit = async () => {
+            setSubmitting(true);
+            try {
+                await authAPI.submitAdminReview({
+                    submission_id: parseInt(submissionId),
+                    ratings: adminRatings,
+                    remarks: adminRemarks
+                });
+                setPopup({
+                    show: true,
+                    title: 'Success!',
+                    message: 'Admin Review submitted successfully!',
+                    type: 'success',
+                    mode: 'alert',
+                    onConfirm: () => {
+                        closePopup();
+                        window.location.reload(); // Reload or partial update? Reloading is safer.
+                    }
+                });
+            } catch (err) {
+                console.error("Submission failed", err);
+                setPopup({
+                    show: true,
+                    title: 'Submission Failed',
+                    message: err.response?.data?.error || 'Failed to submit review.',
+                    type: 'error',
+                    mode: 'alert'
+                });
+            } finally {
+                setSubmitting(false);
+            }
+        };
+
+        setPopup({
+            show: true,
+            title: 'Confirm Submission',
+            message: 'Are you sure you want to submit this Admin Review?',
+            type: 'info',
+            mode: 'confirm',
+            onConfirm: confirmSubmit
+        });
     };
 
     // Existing submit for Manager
     const handleSubmitManagerReview = async (e) => {
         e.preventDefault();
-        setSubmitting(true);
-        try {
-            await authAPI.submitReview({
-                submission_id: parseInt(submissionId),
-                ratings: managerRatings,
-                remarks: managerRemarks
+
+        const confirmSubmit = async () => {
+            setSubmitting(true);
+            try {
+                await authAPI.submitReview({
+                    submission_id: parseInt(submissionId),
+                    ratings: managerRatings,
+                    remarks: managerRemarks
+                });
+                setPopup({
+                    show: true,
+                    title: 'Success!',
+                    message: 'Manager Review submitted successfully!',
+                    type: 'success',
+                    mode: 'alert',
+                    onConfirm: () => {
+                        closePopup();
+                        navigate('/dashboard');
+                    }
+                });
+            } catch (err) {
+                console.error("Submission failed", err);
+                setPopup({
+                    show: true,
+                    title: 'Submission Failed',
+                    message: err.response?.data?.error || 'Failed to submit review.',
+                    type: 'error',
+                    mode: 'alert'
+                });
+            } finally {
+                setSubmitting(false);
+            }
+        };
+
+        setPopup({
+            show: true,
+            title: 'Confirm Submission',
+            message: 'Are you sure you want to submit this Manager Review?',
+            type: 'info',
+            mode: 'confirm',
+            onConfirm: confirmSubmit
+        });
+    };
+
+    const handleIssueDisciplinaryAction = async (e) => {
+        e.preventDefault();
+        if (!actionForm.type || !actionForm.reason) {
+            setPopup({
+                show: true,
+                title: 'Missing Information',
+                message: 'Please select an action type and provide a reason.',
+                type: 'warning',
+                mode: 'alert'
             });
-            alert('Manager Review submitted successfully!');
-            navigate('/dashboard');
+            return;
+        }
+
+        const selected = actionTypes.find(a => a.id === actionForm.type);
+        setIssuingAction(true);
+        try {
+            const res = await authAPI.issueDisciplinaryAction({
+                user: submission.employee_id, // This is the user ID from the response
+                submission: parseInt(submissionId),
+                action_type: actionForm.type,
+                deduction: -selected.deduction,
+                reason: actionForm.reason
+            });
+            setDisciplinaryActions(prev => [res.data, ...prev]);
+            setActionForm({ type: '', reason: '' });
+            setShowDisciplinaryForm(false);
+            setPopup({
+                show: true,
+                title: 'Success!',
+                message: 'Disciplinary action issued successfully!',
+                type: 'success',
+                mode: 'alert'
+            });
         } catch (err) {
-            console.error("Submission failed", err);
-            alert(err.response?.data?.error || 'Failed to submit review.');
+            console.error("Failed to issue disciplinary action", err);
+            setPopup({
+                show: true,
+                title: 'Error',
+                message: err.response?.data?.error || 'Failed to issue action.',
+                type: 'error',
+                mode: 'alert'
+            });
         } finally {
-            setSubmitting(false);
+            setIssuingAction(false);
         }
     };
+
+    const handleRemoveDisciplinaryAction = async (id) => {
+        const confirmRemove = () => {
+            (async () => {
+                try {
+                    await authAPI.removeDisciplinaryAction(id);
+                    setDisciplinaryActions(prev => prev.filter(a => a.id !== id));
+                    setPopup({
+                        show: true,
+                        title: 'Removed!',
+                        message: 'Disciplinary action has been removed.',
+                        type: 'success',
+                        mode: 'alert'
+                    });
+                } catch (err) {
+                    console.error("Failed to remove disciplinary action", err);
+                    setPopup({
+                        show: true,
+                        title: 'Error',
+                        message: err.response?.data?.error || 'Failed to remove action.',
+                        type: 'error',
+                        mode: 'alert'
+                    });
+                } finally {
+                    closePopup();
+                }
+            })();
+        };
+
+        setPopup({
+            show: true,
+            title: 'Confirm Removal',
+            message: 'Are you sure you want to remove this disciplinary action?',
+            type: 'warning',
+            mode: 'confirm',
+            onConfirm: confirmRemove
+        });
+    };
+
+    const totalDeduction = disciplinaryActions.reduce((acc, curr) => acc + (curr.deduction || 0), 0);
+    const displayManagerScore = Math.max(0, managerScore + totalDeduction);
+    const displayAdminScore = Math.max(0, adminScore + totalDeduction);
 
     if (loading) return <div className="loading-state">Loading submission...</div>;
     if (error) return <div className="error-state">{error}</div>;
@@ -149,6 +323,7 @@ const ManagerReview = () => {
 
     return (
         <div className="manager-review-page" style={{ background: '#f8fafc', minHeight: '100vh', padding: '2rem' }}>
+            <CustomPopup {...popup} onClose={closePopup} />
             <div className="review-container" style={{ maxWidth: '900px', margin: '0 auto', background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
 
                 <header style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0', background: 'white' }}>
@@ -340,6 +515,122 @@ const ManagerReview = () => {
                     })}
 
 
+                    {/* Disciplinary Actions Section */}
+                    <div style={{
+                        marginTop: '2rem',
+                        padding: '1.5rem',
+                        borderRadius: '12px',
+                        background: '#fff',
+                        border: '1px solid #e2e8f0',
+                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <MessageSquare size={20} style={{ color: '#64748b' }} /> Disciplinary Record
+                            </h3>
+                            {user?.is_staff && !showDisciplinaryForm && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDisciplinaryForm(true)}
+                                    style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #3b82f6', background: '#eff6ff', color: '#1d4ed8', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer' }}
+                                >
+                                    + Record Action
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Record New Action Form (Admin Only) */}
+                        {showDisciplinaryForm && (
+                            <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1.5rem' }}>
+                                <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#334155' }}>Issue New Disciplinary Action</h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '1rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.4rem' }}>Action Type</label>
+                                        <select
+                                            value={actionForm.type}
+                                            onChange={(e) => setActionForm(prev => ({ ...prev, type: e.target.value }))}
+                                            style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                        >
+                                            <option value="">Select an action...</option>
+                                            {actionTypes.map(t => (
+                                                <option key={t.id} value={t.id}>{t.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div style={{ gridColumn: 'span 2' }}>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.4rem' }}>Reason</label>
+                                        <input
+                                            type="text"
+                                            value={actionForm.reason}
+                                            onChange={(e) => setActionForm(prev => ({ ...prev, reason: e.target.value }))}
+                                            placeholder="Explain why this action is being issued..."
+                                            style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowDisciplinaryForm(false)}
+                                        style={{ padding: '0.5rem 1rem', color: '#64748b', cursor: 'pointer', border: 'none', background: 'none' }}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={issuingAction}
+                                        onClick={handleIssueDisciplinaryAction}
+                                        style={{ padding: '0.5rem 1.5rem', borderRadius: '6px', background: '#3b82f6', color: 'white', fontWeight: '600', cursor: 'pointer', border: 'none' }}
+                                    >
+                                        {issuingAction ? 'Issuing...' : 'Issue Action'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* History List */}
+                        {disciplinaryActions.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', fontSize: '0.9rem', border: '1px dashed #e2e8f0', borderRadius: '8px' }}>
+                                No disciplinary actions recorded for this user.
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                {disciplinaryActions.map(action => {
+                                    const type = actionTypes.find(t => t.id === action.action_type);
+                                    return (
+                                        <div key={action.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderRadius: '8px', border: '1px solid #f1f5f9', background: '#fff' }}>
+                                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                                <div style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', background: `${type?.color}15`, color: type?.color, fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase' }}>
+                                                    {type?.label || action.action_type}
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontSize: '0.9rem', color: '#334155', fontWeight: '500' }}>{action.reason}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Issued by {action.issued_by_name} on {new Date(action.issued_at).toLocaleDateString()}</div>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                                                <div style={{ color: '#f87171', fontWeight: '700', fontSize: '1rem' }}>
+                                                    {action.deduction} pts
+                                                </div>
+                                                {user?.is_staff && (
+                                                    <button
+                                                        onClick={() => handleRemoveDisciplinaryAction(action.id)}
+                                                        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.4rem', borderRadius: '4px', transition: 'all 0.2s' }}
+                                                        onMouseOver={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fee2e2'; }}
+                                                        onMouseOut={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'none'; }}
+                                                        title="Remove action"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
                     {/* Total Score & Actions */}
                     <div style={{
                         marginTop: '3rem',
@@ -367,16 +658,26 @@ const ManagerReview = () => {
                             <div style={{ paddingRight: (user?.is_staff) ? '2rem' : '0', borderRight: (user?.is_staff) ? '1px solid #334155' : 'none' }}>
                                 <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Manager Score</div>
                                 <div style={{ fontSize: '2rem', fontWeight: '800', color: '#fbbf24', lineHeight: 1, whiteSpace: 'nowrap' }}>
-                                    {managerScore.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: '400' }}>/ {submission.questions.length * 10}</span>
+                                    {displayManagerScore.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: '400' }}>/ {submission.questions.length * 10}</span>
                                 </div>
+                                {totalDeduction < 0 && (
+                                    <div style={{ fontSize: '0.75rem', color: '#f87171', marginTop: '0.2rem', fontWeight: '600' }}>
+                                        Deduction Applied: {totalDeduction}
+                                    </div>
+                                )}
                             </div>
 
                             {user?.is_staff && (
                                 <div>
                                     <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Admin Score</div>
                                     <div style={{ fontSize: '2rem', fontWeight: '800', color: '#38bdf8', lineHeight: 1, whiteSpace: 'nowrap' }}>
-                                        {adminScore.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: '400' }}>/ {submission.questions.length * 10}</span>
+                                        {displayAdminScore.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: '400' }}>/ {submission.questions.length * 10}</span>
                                     </div>
+                                    {totalDeduction < 0 && (
+                                        <div style={{ fontSize: '0.75rem', color: '#f87171', marginTop: '0.2rem', fontWeight: '600' }}>
+                                            Deduction Applied: {totalDeduction}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

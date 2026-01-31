@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ProfileMenu from './ProfileMenu';
+import CustomPopup from './CustomPopup';
 import '../styles/Auth.css';
 
 const AssessmentRunner = () => {
@@ -19,6 +20,18 @@ const AssessmentRunner = () => {
     const [error, setError] = useState('');
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [showValidationErrors, setShowValidationErrors] = useState(false);
+
+    // Custom Popup State
+    const [popup, setPopup] = useState({
+        show: false,
+        title: '',
+        message: '',
+        type: 'info',
+        mode: 'alert',
+        onConfirm: null
+    });
+
+    const closePopup = () => setPopup(prev => ({ ...prev, show: false }));
 
     useEffect(() => {
         const fetchAssessment = async () => {
@@ -49,8 +62,17 @@ const AssessmentRunner = () => {
                             setIsSubmitted(false); // Enable editing
                         }
                     } else if (now > endDate) {
-                        alert("This assessment has expired.");
-                        navigate('/dashboard');
+                        setPopup({
+                            show: true,
+                            title: 'Expired',
+                            message: 'This assessment has expired.',
+                            type: 'warning',
+                            mode: 'alert',
+                            onConfirm: () => {
+                                closePopup();
+                                navigate('/dashboard');
+                            }
+                        });
                         return;
                     }
                 } else {
@@ -103,11 +125,26 @@ const AssessmentRunner = () => {
         setSubmitting(true);
         try {
             await authAPI.submitAssessment(id, { answers, ratings });
-            alert('Assessment submitted successfully!');
-            navigate('/dashboard');
+            setPopup({
+                show: true,
+                title: 'Success!',
+                message: 'Assessment submitted successfully!',
+                type: 'success',
+                mode: 'alert',
+                onConfirm: () => {
+                    closePopup();
+                    navigate('/dashboard');
+                }
+            });
         } catch (err) {
             console.error("Submission failed", err);
-            alert(err.response?.data?.error || 'Failed to submit assessment.');
+            setPopup({
+                show: true,
+                title: 'Error',
+                message: err.response?.data?.error || 'Failed to submit assessment.',
+                type: 'error',
+                mode: 'alert'
+            });
             setSubmitting(false);
         }
     };
@@ -129,6 +166,7 @@ const AssessmentRunner = () => {
             background: '#f8fafc',
             padding: '2rem'
         }}>
+            <CustomPopup {...popup} onClose={closePopup} />
             <div className="assessment-runner-container" style={{
                 maxWidth: '800px',
                 margin: '0 auto',

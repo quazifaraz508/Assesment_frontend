@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
 import { Link } from 'react-router-dom';
 import ProfileMenu from './ProfileMenu';
+import CustomPopup from './CustomPopup';
 import {
     DndContext,
     closestCenter,
@@ -202,6 +203,18 @@ const AdminAllocation = () => {
     const [activeId, setActiveId] = useState(null);
     const [showAddManagerModal, setShowAddManagerModal] = useState(false);
 
+    // Custom Popup State
+    const [popup, setPopup] = useState({
+        show: false,
+        title: '',
+        message: '',
+        type: 'info',
+        mode: 'alert',
+        onConfirm: null
+    });
+
+    const closePopup = () => setPopup(prev => ({ ...prev, show: false }));
+
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
@@ -255,16 +268,10 @@ const AdminAllocation = () => {
 
     const handleRemoveManagerColumn = (managerId) => {
         const manager = displayedManagers.find(m => m.id === managerId);
-        if (manager) {
-            setManagerToRemove(manager);
-        }
-    };
+        if (!manager) return;
 
-    const confirmRemoveManager = async () => {
-        if (managerToRemove) {
-            const managerId = managerToRemove.id;
-
-            // 1. Optimistic UI update: Unassign all users belonging to this manager locally
+        const confirmRemove = async () => {
+            // 1. Optimistic UI update
             setUsers(prevUsers => prevUsers.map(u => {
                 if (u.reporting_manager === managerId) {
                     return { ...u, reporting_manager: null };
@@ -278,14 +285,34 @@ const AdminAllocation = () => {
             // 3. Backend Call
             try {
                 await authAPI.deallocateManager(managerId);
+                setPopup({
+                    show: true,
+                    title: 'Removed!',
+                    message: `${manager.name} has been removed from the board.`,
+                    type: 'success',
+                    mode: 'alert'
+                });
             } catch (err) {
                 console.error("Bulk deallocation failed", err);
-                // Optionally revert UI or show error
+                setPopup({
+                    show: true,
+                    title: 'Error',
+                    message: 'Failed to deallocate manager.',
+                    type: 'error',
+                    mode: 'alert'
+                });
                 fetchData(); // Sync with backend on error
             }
+        };
 
-            setManagerToRemove(null);
-        }
+        setPopup({
+            show: true,
+            title: 'Confirm Removal',
+            message: `Are you sure you want to remove ${manager.name} from the board? All reports will be unassigned.`,
+            type: 'warning',
+            mode: 'confirm',
+            onConfirm: confirmRemove
+        });
     };
 
     const handleUnassignUser = async (userId) => {
@@ -496,35 +523,7 @@ const AdminAllocation = () => {
                 </div>
             )}
 
-            {/* Confirmation Modal for Removing Manager */}
-            {managerToRemove && (
-                <div className="modal-overlay" onClick={() => setManagerToRemove(null)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
-                        <h3 style={{ marginBottom: '0.5rem' }}>Remove Manager?</h3>
-                        <p style={{ color: '#64748b', marginBottom: '2rem' }}>
-                            Are you sure you want to remove <strong>{managerToRemove.name}</strong> from the board?
-                            <br />
-                        </p>
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                            <button
-                                className="btn-secondary"
-                                onClick={() => setManagerToRemove(null)}
-                                style={{ flex: 1 }}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="auth-button"
-                                onClick={confirmRemoveManager}
-                                style={{ flex: 1, background: '#ef4444', marginTop: 0 }}
-                            >
-                                Yes, Remove
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <CustomPopup {...popup} onClose={closePopup} />
         </div>
     );
 };

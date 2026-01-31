@@ -79,6 +79,8 @@ export const authAPI = {
     submitReview: (data) => api.post('/reporting/submit-review/', data),
     getReview: (submissionId) => api.get(`/reporting/submission/${submissionId}/review/`),
     submitAdminReview: (data) => api.post('/reporting/submit-admin-review/', data),
+    issueDisciplinaryAction: (data) => api.post('/reporting/issue-disciplinary-action/', data),
+    removeDisciplinaryAction: (id) => api.delete(`/reporting/disciplinary-action/${id}/delete/`),
 
     // Employee Assessments
     getEmployeeAssessments: () => api.get('/employee/assessments/'),

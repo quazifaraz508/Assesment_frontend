@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
+import CustomPopup from './CustomPopup';
 import '../styles/Auth.css'; // Ensure we have access to styles
 
 const ProfileMenu = () => {
@@ -11,11 +12,29 @@ const ProfileMenu = () => {
     const [isUploading, setIsUploading] = useState(false);
     const menuRef = useRef(null);
     const fileInputRef = useRef(null);
-    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+    // Custom Popup State
+    const [popup, setPopup] = useState({
+        show: false,
+        title: '',
+        message: '',
+        type: 'info',
+        mode: 'alert',
+        onConfirm: null
+    });
+
+    const closePopup = () => setPopup(prev => ({ ...prev, show: false }));
 
     const handleLogoutClick = () => {
         setIsOpen(false);
-        setShowLogoutConfirm(true);
+        setPopup({
+            show: true,
+            title: 'Confirm Logout',
+            message: 'Are you sure you want to log out?',
+            type: 'warning',
+            mode: 'confirm',
+            onConfirm: confirmLogout
+        });
     };
 
     const confirmLogout = async () => {
@@ -52,10 +71,22 @@ const ProfileMenu = () => {
             const response = await authAPI.updateProfileImage(formData);
             // Update local user state with new image url
             updateUser(response.data.user);
-            alert('Profile picture updated!');
+            setPopup({
+                show: true,
+                title: 'Success!',
+                message: 'Profile picture updated successfully.',
+                type: 'success',
+                mode: 'alert'
+            });
         } catch (error) {
             console.error('Failed to upload image', error);
-            alert('Failed to upload image.');
+            setPopup({
+                show: true,
+                title: 'Upload Failed',
+                message: 'Failed to upload profile image.',
+                type: 'error',
+                mode: 'alert'
+            });
         } finally {
             setIsUploading(false);
         }
@@ -144,31 +175,7 @@ const ProfileMenu = () => {
                 )}
             </div>
 
-            {/* Logout Confirmation Modal */}
-            {showLogoutConfirm && (
-                <div className="modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '350px', textAlign: 'center' }}>
-                        <h3 style={{ marginBottom: '1rem' }}>Confirm Logout</h3>
-                        <p style={{ color: '#64748b', marginBottom: '2rem' }}>Are you sure you want to log out?</p>
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                            <button
-                                className="btn-secondary"
-                                onClick={() => setShowLogoutConfirm(false)}
-                                style={{ flex: 1 }}
-                            >
-                                No, Cancel
-                            </button>
-                            <button
-                                className="auth-button"
-                                onClick={confirmLogout}
-                                style={{ flex: 1, background: '#ef4444', marginTop: 0 }}
-                            >
-                                Yes, Logout
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <CustomPopup {...popup} onClose={closePopup} />
         </>
     );
 };

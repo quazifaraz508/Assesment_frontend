@@ -102,7 +102,9 @@ const AdminGlobalHistory = () => {
                             ) : (
                                 submissions.map((sub, idx) => {
                                     const hasManagerScore = sub.manager_score !== null && sub.manager_score !== undefined;
-                                    const difference = hasManagerScore ? (sub.manager_score - sub.self_score) : null;
+                                    const totalDeduction = sub.total_deduction || 0;
+                                    const adjustedManagerScore = hasManagerScore ? Math.max(0, sub.manager_score + totalDeduction) : null;
+                                    const difference = hasManagerScore ? (adjustedManagerScore - sub.self_score) : null;
 
                                     return (
                                         <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -117,8 +119,19 @@ const AdminGlobalHistory = () => {
                                             <td style={{ padding: '1rem', fontWeight: '600', color: '#3b82f6' }}>
                                                 {sub.self_score.toFixed(1)}
                                             </td>
-                                            <td style={{ padding: '1rem', fontWeight: '600', color: sub.manager_score ? '#10b981' : '#cbd5e1' }}>
-                                                {sub.manager_score ? sub.manager_score.toFixed(1) : '-'}
+                                            <td style={{ padding: '1rem', fontWeight: '600' }}>
+                                                {hasManagerScore ? (
+                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                        <span style={{ color: '#10b981' }}>{adjustedManagerScore.toFixed(1)}</span>
+                                                        {totalDeduction < 0 && (
+                                                            <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: '400' }}>
+                                                                {sub.manager_score.toFixed(1)} {totalDeduction.toFixed(1)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span style={{ color: '#cbd5e1' }}>-</span>
+                                                )}
                                             </td>
                                             <td style={{ padding: '1rem' }}>
                                                 {hasManagerScore ? (

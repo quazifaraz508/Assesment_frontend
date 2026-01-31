@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ProfileMenu from './ProfileMenu';
+import CustomPopup from './CustomPopup';
 import { Edit, Eye, X, Trash2 } from 'lucide-react';
 import '../styles/Auth.css';
 
@@ -44,6 +45,18 @@ const AdminAssessments = () => {
 
     // Delete Confirmation State
     const [deleteConfirmation, setDeleteConfirmation] = useState(null);
+
+    // Custom Popup State
+    const [popup, setPopup] = useState({
+        show: false,
+        title: '',
+        message: '',
+        type: 'info',
+        mode: 'alert',
+        onConfirm: null
+    });
+
+    const closePopup = () => setPopup(prev => ({ ...prev, show: false }));
 
     useEffect(() => {
         fetchAssessments();
@@ -107,17 +120,17 @@ const AdminAssessments = () => {
         e.preventDefault();
 
         if (formData.departments.length === 0) {
-            alert('Please select at least one department.');
+            setPopup({ show: true, title: 'Validation', message: 'Please select at least one department.', type: 'warning', mode: 'alert' });
             return;
         }
         if (!formData.selectedTemplate) {
-            alert('Please select a template.');
+            setPopup({ show: true, title: 'Validation', message: 'Please select a template.', type: 'warning', mode: 'alert' });
             return;
         }
 
         const template = templates.find(t => t.id.toString() === formData.selectedTemplate.toString());
         if (!template) {
-            alert('Invalid template selected.');
+            setPopup({ show: true, title: 'Error', message: 'Invalid template selected.', type: 'error', mode: 'alert' });
             return;
         }
 
@@ -139,10 +152,10 @@ const AdminAssessments = () => {
                 start_date: '',
                 end_date: ''
             });
-            alert('Assessment created successfully!');
+            setPopup({ show: true, title: 'Success', message: 'Assessment created successfully!', type: 'success', mode: 'alert' });
         } catch (e) {
             console.error(e);
-            alert('Failed to create assessment.');
+            setPopup({ show: true, title: 'Submission Failed', message: 'Failed to create assessment.', type: 'error', mode: 'alert' });
         }
     };
 
@@ -172,25 +185,41 @@ const AdminAssessments = () => {
         try {
             if (editingTemplate) {
                 await authAPI.updateTemplate(editingTemplate.id, templateForm);
-                alert('Template updated!');
+                setPopup({ show: true, title: 'Updated', message: 'Template updated successfully!', type: 'success', mode: 'alert' });
             } else {
                 await authAPI.createTemplate(templateForm);
-                alert('Template created!');
+                setPopup({ show: true, title: 'Created', message: 'Template created successfully!', type: 'success', mode: 'alert' });
             }
             setShowTemplateModal(false);
             fetchTemplates();
         } catch (err) {
             console.error(err);
-            alert('Failed to save template.');
+            setPopup({ show: true, title: 'Error', message: 'Failed to save template.', type: 'error', mode: 'alert' });
         }
     };
 
     const deleteTemplate = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this template?")) return;
-        try {
-            await authAPI.deleteTemplate(id);
-            fetchTemplates();
-        } catch (e) { console.error(e); alert("Failed to delete template"); }
+        const confirmDelete = async () => {
+            try {
+                await authAPI.deleteTemplate(id);
+                fetchTemplates();
+                setPopup({ show: true, title: 'Deleted', message: 'Template deleted.', type: 'success', mode: 'alert' });
+            } catch (e) {
+                console.error(e);
+                setPopup({ show: true, title: 'Error', message: 'Failed to delete template.', type: 'error', mode: 'alert' });
+            } finally {
+                closePopup();
+            }
+        };
+
+        setPopup({
+            show: true,
+            title: 'Confirm Delete',
+            message: 'Are you sure you want to delete this template?',
+            type: 'warning',
+            mode: 'confirm',
+            onConfirm: confirmDelete
+        });
     };
 
     const handleQuestionChange = (idx, field, value) => {
@@ -268,9 +297,10 @@ const AdminAssessments = () => {
             await authAPI.updateAssessment(editingAssessment.id, editAssessmentForm);
             setEditingAssessment(null);
             fetchAssessments();
+            setPopup({ show: true, title: 'Updated', message: 'Assessment updated successfully!', type: 'success', mode: 'alert' });
         } catch (err) {
             console.error('Failed to update assessment:', err);
-            alert('Failed to update assessment.');
+            setPopup({ show: true, title: 'Error', message: 'Failed to update assessment.', type: 'error', mode: 'alert' });
         }
     };
 
@@ -284,14 +314,16 @@ const AdminAssessments = () => {
             await authAPI.deleteAssessment(deleteConfirmation.id);
             setDeleteConfirmation(null);
             fetchAssessments();
+            setPopup({ show: true, title: 'Deleted', message: 'Assessment deleted successfully.', type: 'success', mode: 'alert' });
         } catch (err) {
             console.error('Failed to delete assessment:', err);
-            alert('Failed to delete assessment.');
+            setPopup({ show: true, title: 'Error', message: 'Failed to delete assessment.', type: 'error', mode: 'alert' });
         }
     };
 
     return (
         <div className="dashboard-container">
+            <CustomPopup {...popup} onClose={closePopup} />
             <header className="dashboard-header">
                 <div className="header-content">
                     <h1>Manage Assessments</h1>
