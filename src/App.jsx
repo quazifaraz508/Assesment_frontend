@@ -14,6 +14,7 @@ import AssessmentRunner from './components/AssessmentRunner';
 import ManagerReview from './components/ManagerReview';
 import EmployeeHistory from './components/EmployeeHistory';
 import AdminGlobalHistory from './components/AdminGlobalHistory';
+import AdminSlackSettings from './components/AdminSlackSettings';
 import './index.css';
 
 // Loading Component
@@ -159,6 +160,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AdminSettings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/slack"
+            element={
+              <ProtectedRoute>
+                <AdminSlackSettings />
               </ProtectedRoute>
             }
           />

@@ -224,7 +224,7 @@ const AdminAssessments = () => {
 
     const handleQuestionChange = (idx, field, value) => {
         const newQuestions = [...templateForm.questions];
-        newQuestions[idx][field] = value;
+        newQuestions[idx] = { ...newQuestions[idx], [field]: value };
         setTemplateForm({ ...templateForm, questions: newQuestions });
     };
 

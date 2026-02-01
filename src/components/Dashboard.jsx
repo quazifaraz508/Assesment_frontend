@@ -239,6 +239,31 @@ const Dashboard = () => {
                                     View and search all employee assessments and scores.
                                 </p>
                             </div>
+                            <div
+                                onClick={() => navigate('/admin/slack')}
+                                style={{
+                                    background: 'white',
+                                    padding: '1.5rem',
+                                    borderRadius: '12px',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                    border: '1px solid #e2e8f0',
+                                    cursor: 'pointer',
+                                    transition: 'transform 0.2s',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '0.5rem'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <h3 style={{ margin: 0, color: '#1e293b' }}>Slack Integration</h3>
+                                    <span style={{ fontSize: '1.2rem' }}>💬</span>
+                                </div>
+                                <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>
+                                    Manage webhooks and Slack notification settings.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -401,22 +426,20 @@ const Dashboard = () => {
                             >
                                 Admin Allocation
                             </button>
-                            <a
-                                href="http://localhost:8000/api/auth/settings/"
+                            <button
+                                onClick={() => navigate('/admin/slack')}
                                 className="auth-button"
-                                style={{
-                                    flex: 1,
-                                    minWidth: '200px',
-                                    background: 'linear-gradient(135deg, #64748b 0%, #475569 100%)',
-                                    textAlign: 'center',
-                                    textDecoration: 'none',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}
+                                style={{ flex: 1, minWidth: '200px', background: 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)' }}
+                            >
+                                Slack Settings
+                            </button>
+                            <button
+                                onClick={() => navigate('/admin/settings')}
+                                className="auth-button"
+                                style={{ flex: 1, minWidth: '200px', background: 'linear-gradient(135deg, #64748b 0%, #475569 100%)' }}
                             >
                                 Site Settings
-                            </a>
+                            </button>
                         </>
                     )}
                 </div>
