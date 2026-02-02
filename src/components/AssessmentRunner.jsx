@@ -75,6 +75,21 @@ const AssessmentRunner = () => {
                         });
                         return;
                     }
+
+                    // Load Draft if not submitted or if editable
+                    if (!found.is_submitted || now <= endDate) {
+                        const draftKey = `assessment_draft_${id}_${user?.id}`;
+                        const savedDraft = localStorage.getItem(draftKey);
+                        if (savedDraft) {
+                            try {
+                                const { answers: draftAnswers, ratings: draftRatings } = JSON.parse(savedDraft);
+                                if (draftAnswers) setAnswers(prev => ({ ...prev, ...draftAnswers }));
+                                if (draftRatings) setRatings(prev => ({ ...prev, ...draftRatings }));
+                            } catch (e) {
+                                console.error("Failed to parse draft", e);
+                            }
+                        }
+                    }
                 } else {
                     setError('Assessment not found or not available for you.');
                 }
@@ -87,7 +102,16 @@ const AssessmentRunner = () => {
         };
 
         fetchAssessment();
-    }, [id, navigate]);
+    }, [id, navigate, user?.id]);
+
+    // Save Draft on changes
+    useEffect(() => {
+        if (!loading && assessment && !isSubmitted) {
+            const draftKey = `assessment_draft_${id}_${user?.id}`;
+            const draftData = JSON.stringify({ answers, ratings });
+            localStorage.setItem(draftKey, draftData);
+        }
+    }, [answers, ratings, loading, assessment, isSubmitted, id, user?.id]);
 
     const handleAnswerChange = (questionId, value) => {
         setAnswers(prev => ({
@@ -97,9 +121,13 @@ const AssessmentRunner = () => {
     };
 
     const handleRatingChange = (questionId, value) => {
-        // Allow empty string or valid number 0-10
+        // Find current question to get its max_score
+        const question = questions.find(q => q.id.toString() === questionId.toString());
+        const maxScore = question?.max_score || 10;
+
+        // Allow empty string or valid number 0 to maxScore
         const numValue = value === '' ? '' : parseFloat(value);
-        if (value === '' || (numValue >= 0 && numValue <= 10)) {
+        if (value === '' || (numValue >= 0 && numValue <= maxScore)) {
             setRatings(prev => ({
                 ...prev,
                 [questionId]: numValue
@@ -109,7 +137,7 @@ const AssessmentRunner = () => {
 
     // Calculate total self-rating score
     const totalRating = Object.values(ratings).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-    const maxRating = questions.length * 10;
+    const maxTotalRating = questions.reduce((sum, q) => sum + (q.max_score || 10), 0);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -125,6 +153,10 @@ const AssessmentRunner = () => {
         setSubmitting(true);
         try {
             await authAPI.submitAssessment(id, { answers, ratings });
+
+            // Clear Draft
+            localStorage.removeItem(`assessment_draft_${id}_${user?.id}`);
+
             setPopup({
                 show: true,
                 title: 'Success!',
@@ -266,12 +298,12 @@ const AssessmentRunner = () => {
                                 <input
                                     type="number"
                                     min="0"
-                                    max="10"
+                                    max={q.max_score || 10}
                                     step="0.1"
                                     value={ratings[q.id] ?? ''}
                                     onChange={(e) => handleRatingChange(q.id, e.target.value)}
                                     disabled={isSubmitted}
-                                    placeholder="0-10"
+                                    placeholder={`0-${q.max_score || 10}`}
                                     style={{
                                         width: '80px',
                                         padding: '0.5rem',
@@ -284,7 +316,7 @@ const AssessmentRunner = () => {
                                         backgroundColor: isSubmitted ? '#e2e8f0' : 'white'
                                     }}
                                 />
-                                <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>/ 10</span>
+                                <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>/ {q.max_score || 10}</span>
                                 {showValidationErrors && (ratings[q.id] === undefined || ratings[q.id] === '') && (
                                     <span style={{ color: '#ef4444', fontSize: '0.8rem', marginLeft: '0.5rem' }}>Required</span>
                                 )}
@@ -305,7 +337,7 @@ const AssessmentRunner = () => {
                             Your Total Self-Rating
                         </p>
                         <p style={{ margin: 0, fontSize: '2rem', fontWeight: '700', color: '#0284c7' }}>
-                            {totalRating.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: '400' }}>/ {maxRating}</span>
+                            {totalRating.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: '400' }}>/ {maxTotalRating}</span>
                         </p>
                     </div>
 

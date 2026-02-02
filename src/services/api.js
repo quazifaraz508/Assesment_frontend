@@ -104,6 +104,11 @@ export const authAPI = {
     // Admin Settings
     getSiteSettings: () => api.get('/auth/site-settings/'),
     updateSiteSettings: (data) => api.post('/auth/site-settings/', data),
+
+    // Slack Webhooks
+    getSlackWebhooks: () => api.get('/slack/webhooks/'),
+    addSlackWebhook: (data) => api.post('/slack/webhooks/', data),
+    deleteSlackWebhook: (id) => api.delete(`/slack/webhooks/${id}/`),
 };
 
 export default api;

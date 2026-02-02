@@ -118,11 +118,15 @@ const AdminGlobalHistory = () => {
                                             </td>
                                             <td style={{ padding: '1rem', fontWeight: '600', color: '#3b82f6' }}>
                                                 {sub.self_score.toFixed(1)}
+                                                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '400', marginLeft: '0.2rem' }}>/{sub.max_score || 0}</span>
                                             </td>
                                             <td style={{ padding: '1rem', fontWeight: '600' }}>
                                                 {hasManagerScore ? (
                                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                        <span style={{ color: '#10b981' }}>{adjustedManagerScore.toFixed(1)}</span>
+                                                        <span style={{ color: '#10b981' }}>
+                                                            {adjustedManagerScore.toFixed(1)}
+                                                            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '400', marginLeft: '0.2rem' }}>/{sub.max_score || 0}</span>
+                                                        </span>
                                                         {totalDeduction < 0 && (
                                                             <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: '400' }}>
                                                                 {sub.manager_score.toFixed(1)} {totalDeduction.toFixed(1)}
