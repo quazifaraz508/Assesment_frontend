@@ -24,6 +24,9 @@ const Dashboard = () => {
     const [showAll, setShowAll] = useState(false);
 
     const [teamStatus, setTeamStatus] = useState([]);
+    const [teamPage, setTeamPage] = useState(1);
+    const [teamTotalPages, setTeamTotalPages] = useState(1);
+    const [teamLoading, setTeamLoading] = useState(false);
 
     useEffect(() => {
         const fetchAssessments = async () => {
@@ -65,24 +68,67 @@ const Dashboard = () => {
                     return endA - endB; // Earliest due date first
                 });
                 setAssessments(sorted);
+
+                // CLEANUP: Remove stale drafts from Local Storage
+                // 1. Identify valid assessment IDs for this user
+                const validIds = new Set(res.data.map(a => a.id));
+                const currentUserId = user?.id;
+
+                // 2. Iterate keys and find drafts to remove
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('assessment_draft_')) {
+                        const parts = key.split('_');
+                        // Format: assessment_draft_{assessmentId}_{userId}
+                        if (parts.length === 4) {
+                            const draftAssessmentId = parseInt(parts[2]);
+                            const draftUserId = parseInt(parts[3]);
+
+                            // Only clean up drafts for the current logged-in user
+                            if (draftUserId === currentUserId) {
+                                // If the assessment ID is not in our fetched list, it's stale (unassigned or deleted)
+                                // Also optional: if it IS in the list but is_submitted, we could clear it (handled by runner usually, but double check)
+                                const assessment = res.data.find(a => a.id === draftAssessmentId);
+
+                                if (!validIds.has(draftAssessmentId) || (assessment && assessment.is_submitted && new Date() > new Date(assessment.end_date))) {
+                                    keysToRemove.push(key);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 3. Remove them
+                keysToRemove.forEach(k => localStorage.removeItem(k));
             } catch (e) {
                 console.error("Failed to fetch assessments", e);
             }
         };
 
-        const fetchTeamStatus = async () => {
+        const fetchTeamStatus = async (page = 1) => {
             // Only fetch if user is likely a manager (or just try and catch)
             try {
-                const res = await authAPI.getTeamStatus();
-                setTeamStatus(res.data);
+                setTeamLoading(true);
+                const res = await authAPI.getTeamStatus(page);
+                if (res.data.results) {
+                    setTeamStatus(res.data.results);
+                    setTeamTotalPages(res.data.total_pages);
+                    setTeamPage(res.data.current_page);
+                } else if (Array.isArray(res.data)) {
+                    // Fallback for non-paginated response
+                    setTeamStatus(res.data);
+                }
             } catch (e) {
                 // Ignore 403 or empty if not manager
+            } finally {
+                setTeamLoading(false);
             }
         };
 
         fetchAssessments();
-        fetchTeamStatus();
-    }, []);
+        fetchTeamStatus(teamPage);
+    }, [teamPage]);
 
     return (
         <div className="dashboard-container">
@@ -232,6 +278,42 @@ const Dashboard = () => {
                                 </tbody>
                             </table>
                         </div>
+                        {/* Pagination Controls */}
+                        {teamTotalPages > 1 && (
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
+                                <button
+                                    onClick={() => setTeamPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={teamPage === 1 || teamLoading}
+                                    style={{
+                                        padding: '0.5rem 1rem',
+                                        border: '1px solid #cbd5e1',
+                                        borderRadius: '6px',
+                                        background: 'white',
+                                        cursor: teamPage === 1 ? 'not-allowed' : 'pointer',
+                                        color: teamPage === 1 ? '#94a3b8' : '#334155'
+                                    }}
+                                >
+                                    Previous
+                                </button>
+                                <span style={{ color: '#64748b', fontSize: '0.9rem' }}>
+                                    Page {teamPage} of {teamTotalPages}
+                                </span>
+                                <button
+                                    onClick={() => setTeamPage(prev => Math.min(prev + 1, teamTotalPages))}
+                                    disabled={teamPage === teamTotalPages || teamLoading}
+                                    style={{
+                                        padding: '0.5rem 1rem',
+                                        border: '1px solid #cbd5e1',
+                                        borderRadius: '6px',
+                                        background: 'white',
+                                        cursor: teamPage === teamTotalPages ? 'not-allowed' : 'pointer',
+                                        color: teamPage === teamTotalPages ? '#94a3b8' : '#334155'
+                                    }}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
 

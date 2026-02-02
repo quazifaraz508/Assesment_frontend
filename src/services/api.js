@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { secureStorage } from '../utils/secureStorage';
 
 // Use environment variable or fallback to localhost
 const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
@@ -14,7 +15,7 @@ const api = axios.create({
 // Add auth token to requests
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('token');
+        const token = secureStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Token ${token}`;
         }
@@ -30,8 +31,8 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
+            secureStorage.removeItem('token');
+            secureStorage.removeItem('user');
             window.location.href = '/login';
         }
         return Promise.reject(error);
@@ -73,7 +74,7 @@ export const authAPI = {
     deleteTemplate: (id) => api.delete(`/manager/templates/${id}/`),
 
     // Reporting Manager
-    getTeamStatus: () => api.get('/reporting/team-status/'),
+    getTeamStatus: (page = 1, pageSize = 10) => api.get(`/reporting/team-status/?page=${page}&page_size=${pageSize}`),
     getEmployeeHistory: (employeeId) => api.get(`/reporting/employee/${employeeId}/history/`),
     getSubmissionForReview: (submissionId) => api.get(`/reporting/submission/${submissionId}/for-review/`),
     submitReview: (data) => api.post('/reporting/submit-review/', data),

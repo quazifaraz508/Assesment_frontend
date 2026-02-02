@@ -37,7 +37,7 @@ const getManagerColor = (id) => {
 };
 
 // Sortable Item Component
-const SortableItem = ({ id, user, onRemove, highlightManagers = false, hasTeam = false, managerColor, isDimmed, dottedManagerColor }) => {
+const SortableItem = ({ id, user, onRemove, highlightManagers = false, hasTeam = false, managerColor, isDimmed, dottedManagerColor, hideManagerTag = false }) => {
     const {
         attributes,
         listeners,
@@ -123,7 +123,7 @@ const SortableItem = ({ id, user, onRemove, highlightManagers = false, hasTeam =
                         }}>
                             {user.name}
                         </span>
-                        {hasTeam && <span style={{
+                        {hasTeam && !hideManagerTag && <span style={{
                             fontSize: '0.6rem',
                             color: primaryColor,
                             background: '#fff',
@@ -612,6 +612,7 @@ const AdminAllocation = () => {
                                             highlightManagers={true}
                                             hasTeam={hasTeam}
                                             managerColor={managerColor}
+                                            hideManagerTag={true} // Hide tag in sidebar
                                             isDimmed={!!activeAssignment}
                                             dottedManagerColor={dottedManagerColor}
                                         />

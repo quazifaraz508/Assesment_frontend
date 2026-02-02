@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
+import { secureStorage } from '../utils/secureStorage';
 
 const AuthContext = createContext(null);
 
@@ -16,11 +17,10 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
+        const storedUser = secureStorage.getItem('user');
 
-        if (token && storedUser) {
-            setUser(JSON.parse(storedUser));
+        if (storedUser) {
+            setUser(storedUser);
         }
         setLoading(false);
     }, []);
@@ -29,8 +29,8 @@ export const AuthProvider = ({ children }) => {
         const response = await authAPI.login({ email, password });
         const { token, user: userData } = response.data;
 
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(userData));
+        secureStorage.setItem('token', token);
+        secureStorage.setItem('user', userData);
         setUser(userData);
 
         return response.data;
@@ -41,8 +41,8 @@ export const AuthProvider = ({ children }) => {
         const response = await authAPI.register(userData);
         const { token, user: newUser } = response.data;
 
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(newUser));
+        secureStorage.setItem('token', token);
+        secureStorage.setItem('user', newUser);
         setUser(newUser);
 
         return response.data;
@@ -53,8 +53,8 @@ export const AuthProvider = ({ children }) => {
         const response = await authAPI.verifyOTP({ email, otp_code });
         const { token, user: updatedUser } = response.data;
 
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        secureStorage.setItem('token', token);
+        secureStorage.setItem('user', updatedUser);
         setUser(updatedUser);
 
         return response.data;
@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }) => {
         const response = await authAPI.completeProfile(profileData);
         const { user: updatedUser } = response.data;
 
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        secureStorage.setItem('user', updatedUser);
         setUser(updatedUser);
 
         return response.data;
@@ -83,14 +83,14 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error('Logout error:', error);
         } finally {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
+            secureStorage.removeItem('token');
+            secureStorage.removeItem('user');
             setUser(null);
         }
     };
 
     const updateUser = (userData) => {
-        localStorage.setItem('user', JSON.stringify(userData));
+        secureStorage.setItem('user', userData);
         setUser(userData);
     };
 
