@@ -96,7 +96,7 @@ const AdminSettings = () => {
 
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-8">
+                <div className="bg-primary px-6 py-8">
                     <h1 className="text-2xl font-bold text-white">Site Settings</h1>
                     <p className="text-white/80 mt-1">Configure registration and authentication settings</p>
                 </div>
@@ -205,7 +205,7 @@ const AdminSettings = () => {
                         <button
                             type="submit"
                             disabled={saving}
-                            className={`flex items-center px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-600 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 transition transform hover:-translate-y-0.5 shadow-lg ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            className={`flex items-center px-6 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-indigo-100 transition transform hover:-translate-y-0.5 shadow-lg ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
                             {saving ? (
                                 <>

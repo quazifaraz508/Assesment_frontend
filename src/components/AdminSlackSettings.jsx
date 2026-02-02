@@ -140,7 +140,7 @@ const AdminSlackSettings = () => {
 
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8 border border-gray-100">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-slate-800 to-indigo-900 px-8 py-10 text-white">
+                <div className="bg-primary px-8 py-10 text-white">
                     <div className="flex items-center gap-4 mb-3">
                         <div className="p-3 bg-white/10 rounded-xl backdrop-blur-md">
                             <Slack className="w-8 h-8" />
