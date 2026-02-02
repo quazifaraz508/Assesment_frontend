@@ -8,9 +8,9 @@ export default {
         extend: {
             colors: {
                 primary: {
-                    light: '#4B9CD3', // Solid Blue Light
-                    DEFAULT: '#005A9C', // Solid Blue (Education standard)
-                    dark: '#003366', // Solid Blue Dark
+                    light: '#BE9EFF', // Lighter shade of purple
+                    DEFAULT: '#8B51FF', // Teaching Pariksha Purple
+                    dark: '#701aef', // Darker shade for hover
                 },
                 secondary: {
                     light: '#F5F5F5',

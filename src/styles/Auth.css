@@ -4,10 +4,11 @@
 
 /* CSS Variables */
 :root {
-    --primary-color: #6366f1;
-    --primary-hover: #4f46e5;
-    --primary-light: #eef2ff;
-    --secondary-color: #0ea5e9;
+    --primary-color: #8B51FF;
+    --primary-hover: #701aef;
+    --primary-light: #eee5ff;
+    --secondary-color: #fdb139;
+    /* Extracted from btn-primary-light in source */
     --success-color: #22c55e;
     --warning-color: #f59e0b;
     --error-color: #ef4444;
