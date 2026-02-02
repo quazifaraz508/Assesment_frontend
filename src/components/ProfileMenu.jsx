@@ -160,9 +160,14 @@ const ProfileMenu = () => {
                             )}
 
                             {user?.is_staff && (
-                                <div className="dropdown-item" onClick={() => navigate('/admin/allocation')}>
-                                    Admin Allocation
-                                </div>
+                                <>
+                                    <div className="dropdown-item" onClick={() => navigate('/admin/allocation')}>
+                                        Admin Allocation
+                                    </div>
+                                    <div className="dropdown-item" onClick={() => navigate('/admin/dotted-allocation')}>
+                                        Dotted Line Allocation
+                                    </div>
+                                </>
                             )}
 
                             <div className="dropdown-divider"></div>

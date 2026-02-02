@@ -19,10 +19,25 @@ import {
     useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Calendar, User as UserIcon, Trash2, Clock, AlertCircle, Users } from 'lucide-react';
 import '../styles/Auth.css';
 
+const getManagerColor = (id) => {
+    if (!id) return { primary: '#6366f1', bg: '#eef2ff', text: '#4338ca' };
+
+    // Golden angle approximation for even distribution of hues
+    const hue = (id * 137.508) % 360;
+
+    return {
+        primary: `hsl(${hue}, 65%, 45%)`,
+        bg: `hsl(${hue}, 70%, 97%)`,
+        text: `hsl(${hue}, 70%, 25%)`,
+        name: `Color-${Math.round(hue)}`
+    };
+};
+
 // Sortable Item Component
-const SortableItem = ({ id, user, onRemove, highlightManagers = false, hasTeam = false }) => {
+const SortableItem = ({ id, user, onRemove, highlightManagers = false, hasTeam = false, managerColor, isDimmed, dottedManagerColor }) => {
     const {
         attributes,
         listeners,
@@ -36,22 +51,32 @@ const SortableItem = ({ id, user, onRemove, highlightManagers = false, hasTeam =
         transition,
     };
 
-    const isManager = highlightManagers && (user.role === 'manager' || user.is_manager);
-
-    // Clean Indigo Theme for Managers
-    const highlightColor = '#6366f1'; // Indigo-500
-    const highlightBg = '#eef2ff';    // Indigo-50
-    const textColor = '#4338ca';      // Indigo-700
+    // Use specific manager color if provided, otherwise default indigo
+    const primaryColor = managerColor?.primary || '#6366f1';
+    const bgColor = isDimmed ? (dottedManagerColor?.bg || '#f8fafc') : (managerColor?.bg || '#eef2ff');
+    const textColor = isDimmed ? '#94a3b8' : (managerColor?.text || '#4338ca');
 
     return (
         <div
             ref={setNodeRef}
-            style={style}
+            style={{
+                ...style,
+                opacity: isDimmed ? 0.7 : 1,
+                borderLeft: isDimmed ? `4px solid ${dottedManagerColor?.primary || '#94a3b8'}` : 'none',
+                background: isDimmed ? '#f8fafc' : 'white',
+                cursor: 'grab'
+            }}
             {...attributes}
             {...listeners}
-            className="draggable-item"
+            className={`draggable-item ${isDimmed ? 'dimmed-item' : ''}`}
         >
-            {hasTeam && (
+            {isDimmed && (
+                <div style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(255, 255, 255, 0.4)', pointerEvents: 'none', zIndex: 3, borderRadius: '8px'
+                }} />
+            )}
+            {hasTeam && !isDimmed && (
                 <div style={{
                     position: 'absolute',
                     top: 0,
@@ -59,74 +84,94 @@ const SortableItem = ({ id, user, onRemove, highlightManagers = false, hasTeam =
                     right: 0,
                     bottom: 0,
                     borderRadius: '8px',
-                    border: `2px solid ${highlightColor}`,
-                    background: highlightBg,
-                    opacity: 0.4,
+                    border: `2px solid ${primaryColor}`,
+                    background: bgColor,
+                    opacity: 0.2,
                     pointerEvents: 'none',
                     zIndex: 1
                 }} />
             )}
 
-            {user.profile_picture ? (
-                <img
-                    src={user.profile_picture.startsWith('http') ? user.profile_picture : `${import.meta.env.VITE_BACKEND_URL}${user.profile_picture}`}
-                    alt={user.name}
-                    className="user-avatar-sm-img"
-                    style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '50%',
-                        objectFit: 'cover',
-                        marginRight: '0.75rem',
-                        border: hasTeam ? `1px solid ${highlightColor}` : 'none'
-                    }}
-                />
-            ) : (
-                <div className="user-avatar-sm" style={{
-                    color: hasTeam ? highlightColor : 'inherit',
-                    background: hasTeam ? highlightBg : 'inherit'
-                }}>{user.name.charAt(0)}</div>
-            )}
+            <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', width: '100%' }}>
+                {user.profile_picture ? (
+                    <img
+                        src={user.profile_picture.startsWith('http') ? user.profile_picture : `${import.meta.env.VITE_BACKEND_URL}${user.profile_picture}`}
+                        alt={user.name}
+                        className="user-avatar-sm-img"
+                        style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            marginRight: '0.75rem',
+                            border: hasTeam ? `1px solid ${primaryColor}` : 'none'
+                        }}
+                    />
+                ) : (
+                    <div className="user-avatar-sm" style={{
+                        color: hasTeam ? primaryColor : 'inherit',
+                        background: hasTeam ? bgColor : 'inherit',
+                        border: hasTeam ? `1px solid ${primaryColor}` : 'none'
+                    }}>{user.name.charAt(0)}</div>
+                )}
 
-            <div className="user-info-sm" style={{ position: 'relative', zIndex: 2 }}>
-                <span className="name" style={{
-                    fontWeight: hasTeam ? '600' : '400',
-                    color: hasTeam ? textColor : 'inherit',
-                    display: 'flex', alignItems: 'center', gap: '4px'
-                }}>
-                    {user.name}
-                    {hasTeam && <span style={{
-                        fontSize: '0.65rem',
-                        color: highlightColor,
-                        background: '#fff',
-                        border: `1px solid ${highlightColor}`,
-                        padding: '1px 6px',
-                        borderRadius: '10px',
-                        whiteSpace: 'nowrap',
-                        fontWeight: 'bold'
-                    }}>Reporting Manager</span>}
-                </span>
-                <span className="role">{user.role}</span>
+                <div className="user-info-sm" style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span className="name" style={{
+                            fontWeight: hasTeam ? '600' : '400',
+                            color: hasTeam ? textColor : 'inherit',
+                        }}>
+                            {user.name}
+                        </span>
+                        {hasTeam && <span style={{
+                            fontSize: '0.6rem',
+                            color: primaryColor,
+                            background: '#fff',
+                            border: `1px solid ${primaryColor}`,
+                            padding: '1px 6px',
+                            borderRadius: '10px',
+                            whiteSpace: 'nowrap',
+                            fontWeight: 'bold'
+                        }}>Reporting Manager</span>}
+                        {isDimmed && (
+                            <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '0.65rem',
+                                color: '#14b8a6',
+                                background: '#f0fdfa',
+                                padding: '2px 6px',
+                                borderRadius: '999px',
+                                border: '1px solid #ccfbf1',
+                                lineHeight: '1'
+                            }}>
+                                <Clock size={10} /> Temporarily Assigned
+                            </span>
+                        )}
+                    </div>
+                    <span className="role">{user.role}</span>
+                </div>
+                {onRemove && (
+                    <button
+                        className="icon-btn remove-user-btn"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onRemove();
+                        }}
+                        style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#ef4444' }}
+                    >
+                        ×
+                    </button>
+                )}
             </div>
-            {onRemove && (
-                <button
-                    className="icon-btn remove-user-btn"
-                    onPointerDown={(e) => e.stopPropagation()} // Prevent drag on button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onRemove();
-                    }}
-                    style={{ position: 'relative', zIndex: 2, marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#ef4444' }}
-                >
-                    ×
-                </button>
-            )}
         </div>
     );
 };
 
 // Manager Droppable Container
-const ManagerContainer = ({ manager, employees, onRemoveManager, onUnassignUser }) => {
+const ManagerContainer = ({ manager, employees, onRemoveManager, onUnassignUser, color, assignments, allManagers, allUsers }) => {
     // We strictly use the manager's ID as the container ID for drop detection
     const { setNodeRef } = useSortable({
         id: `manager-${manager.id}`,
@@ -134,28 +179,28 @@ const ManagerContainer = ({ manager, employees, onRemoveManager, onUnassignUser 
     });
 
     return (
-        <div ref={setNodeRef} className="manager-column">
-            <div className="manager-header" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div ref={setNodeRef} className="manager-column" style={{ borderTop: `4px solid ${color.primary}` }}>
+            <div className="manager-header" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', background: color.bg, padding: '1.5rem 1rem' }}>
                 {manager.profile_picture ? (
                     <img
                         src={manager.profile_picture.startsWith('http') ? manager.profile_picture : `${import.meta.env.VITE_BACKEND_URL}${manager.profile_picture}`}
                         alt={manager.name}
                         style={{
-                            width: '48px',
-                            height: '48px',
+                            width: '56px',
+                            height: '56px',
                             borderRadius: '50%',
                             objectFit: 'cover',
                             marginBottom: '0.5rem',
-                            border: '2px solid #e2e8f0'
+                            border: `2px solid ${color.primary}`
                         }}
                     />
                 ) : (
-                    <div className="user-avatar-sm" style={{ width: '48px', height: '48px', fontSize: '1.5rem', marginBottom: '0.5rem' }}>
+                    <div className="user-avatar-sm" style={{ width: '56px', height: '56px', fontSize: '1.8rem', marginBottom: '0.5rem', background: '#fff', color: color.primary, border: `1px solid ${color.primary}` }}>
                         {manager.name.charAt(0)}
                     </div>
                 )}
-                <h3>{manager.name}</h3>
-                <span className="badge">{manager.designation}</span>
+                <h3 style={{ color: color.text }}>{manager.name}</h3>
+                <span className="badge" style={{ background: color.primary, color: '#fff' }}>{manager.designation}</span>
                 <button
                     className="icon-btn remove-manager-btn"
                     onClick={() => onRemoveManager(manager.id)}
@@ -167,7 +212,8 @@ const ManagerContainer = ({ manager, employees, onRemoveManager, onUnassignUser 
                         border: 'none',
                         fontSize: '1.5rem',
                         cursor: 'pointer',
-                        color: '#94a3b8',
+                        color: color.primary,
+                        opacity: 0.5,
                         lineHeight: 1
                     }}
                     title="Hide Manager"
@@ -175,21 +221,66 @@ const ManagerContainer = ({ manager, employees, onRemoveManager, onUnassignUser 
                     ×
                 </button>
             </div>
-            <div className="manager-droppable-area">
-                <SortableContext
-                    items={employees.map(e => e.id)}
-                    strategy={verticalListSortingStrategy}
-                >
-                    {employees.map(user => (
-                        <SortableItem
-                            key={user.id}
-                            id={user.id}
-                            user={user}
-                            onRemove={() => onUnassignUser(user.id)}
-                        />
-                    ))}
-                    {employees.length === 0 && <div className="empty-placeholder">Drop employees here</div>}
-                </SortableContext>
+            <div className="manager-droppable-area" style={{ flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* Permanent Team Header */}
+                <div>
+                    <h4 style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Users size={12} /> Permanent Team
+                    </h4>
+                    <SortableContext
+                        items={employees.map(e => e.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        {employees.map(user => {
+                            const activeAssignment = assignments.find(a => a.user === user.id && a.is_active);
+                            const dottedManagerColor = activeAssignment ? allManagers.find(m => m.id === activeAssignment.dotted_line_manager)?.color : null;
+
+                            return (
+                                <SortableItem
+                                    key={user.id}
+                                    id={user.id}
+                                    user={user}
+                                    onRemove={() => onUnassignUser(user.id)}
+                                    managerColor={color}
+                                    isDimmed={!!activeAssignment}
+                                    dottedManagerColor={dottedManagerColor}
+                                />
+                            );
+                        })}
+                        {employees.length === 0 && <div className="empty-placeholder">No permanent reports</div>}
+                    </SortableContext>
+                </div>
+
+                {/* Temporary Teammates Header */}
+                <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed #e2e8f0' }}>
+                    <h4 style={{ fontSize: '0.7rem', color: color.primary, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Clock size={12} /> Temporary Teammates
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {assignments
+                            .filter(a => a.dotted_line_manager === manager.id && a.is_active)
+                            .map(assignment => {
+                                const user = allUsers.find(u => u.id === assignment.user);
+                                if (!user) return null;
+
+                                const managerColor = allManagers.find(m => m.id === user.reporting_manager)?.color;
+
+                                return (
+                                    <SortableItem
+                                        key={`temp-${assignment.id}`}
+                                        id={`temp-${assignment.id}`}
+                                        user={user}
+                                        managerColor={managerColor}
+                                        dottedManagerColor={color}
+                                        isDimmed={false}
+                                    />
+                                );
+                            })}
+                        {assignments.filter(a => a.dotted_line_manager === manager.id && a.is_active).length === 0 && (
+                            <div className="empty-placeholder" style={{ fontSize: '0.7rem', borderStyle: 'dotted', padding: '0.5rem' }}>No temporary teammates</div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -199,9 +290,12 @@ const AdminAllocation = () => {
     const [availableManagers, setAvailableManagers] = useState([]); // List of all potential managers from API
     const [displayedManagers, setDisplayedManagers] = useState([]); // Managers currently shown as columns
     const [users, setUsers] = useState([]); // All users state for allocation
+    const [assignments, setAssignments] = useState([]); // All dotted assignments
     const [loading, setLoading] = useState(true);
     const [activeId, setActiveId] = useState(null);
     const [showAddManagerModal, setShowAddManagerModal] = useState(false);
+    const [showPromotionModal, setShowPromotionModal] = useState(false);
+    const [promotionData, setPromotionData] = useState(null);
 
     // Custom Popup State
     const [popup, setPopup] = useState({
@@ -229,11 +323,18 @@ const AdminAllocation = () => {
     const fetchData = async () => {
         try {
             const [managersRes, usersRes] = await authAPI.getAllocateData();
-            const allManagers = managersRes.data;
+            const assignmentsRes = await authAPI.getDottedAllocations();
+
+            const allManagers = managersRes.data.map((m) => ({
+                ...m,
+                color: getManagerColor(m.id)
+            }));
             const allUsers = usersRes.data;
+            const allAssignments = assignmentsRes.data;
 
             setAvailableManagers(allManagers);
             setUsers(allUsers);
+            setAssignments(allAssignments);
 
             // Initial Display: Only managers who ALREADY have direct reports
             const activeManagerIds = new Set(allUsers.map(u => u.reporting_manager).filter(id => id !== null));
@@ -358,6 +459,13 @@ const AdminAllocation = () => {
         }
         else if (over.id === 'unassigned-pool') {
             targetManagerId = null;
+        } else if (typeof over.id === 'string' && over.id.startsWith('temp-')) {
+            // Dropped on a temporary teammate item
+            const assignmentId = parseInt(over.id.split('temp-')[1]);
+            const assignment = assignments.find(a => a.id === assignmentId);
+            if (assignment) {
+                targetManagerId = assignment.dotted_line_manager;
+            }
         } else {
             // Dropped on another user item
             const overUser = users.find(u => u.id === over.id);
@@ -371,15 +479,37 @@ const AdminAllocation = () => {
             }
         }
 
-        const activeUser = users.find(u => u.id === active.id);
+        // Find the actual user ID (might be dragging from temp section)
+        let activeUserId = active.id;
+        if (typeof active.id === 'string' && active.id.startsWith('temp-')) {
+            const assignmentId = parseInt(active.id.split('temp-')[1]);
+            const assignment = assignments.find(a => a.id === assignmentId);
+            if (assignment) {
+                activeUserId = assignment.user;
+            }
+        }
+
+        const activeUser = users.find(u => u.id === activeUserId);
 
         if (activeUser && activeUser.reporting_manager === targetManagerId) {
             return;
         }
 
+        // Check if dragging from temporary section
+        if (typeof active.id === 'string' && active.id.startsWith('temp-')) {
+            setPromotionData({
+                userId: activeUserId,
+                managerId: targetManagerId,
+                userName: activeUser?.name || activeUser?.email,
+                managerName: availableManagers.find(m => m.id === targetManagerId)?.name
+            });
+            setShowPromotionModal(true);
+            return;
+        }
+
         // Optimistic UI Update
         setUsers(users.map(u => {
-            if (u.id === active.id) {
+            if (u.id === activeUserId) {
                 return { ...u, reporting_manager: targetManagerId };
             }
             return u;
@@ -387,12 +517,48 @@ const AdminAllocation = () => {
 
         try {
             await authAPI.allocateUser({
-                user_id: active.id,
+                user_id: activeUserId,
                 manager_id: targetManagerId
             });
         } catch (err) {
             console.error("Allocation failed", err);
             fetchData();
+        }
+    };
+
+    const handleConfirmPromotion = async () => {
+        if (!promotionData) return;
+
+        const { userId, managerId } = promotionData;
+
+        // Optimistic UI Update
+        setUsers(users.map(u => {
+            if (u.id === userId) {
+                return { ...u, reporting_manager: managerId };
+            }
+            return u;
+        }));
+
+        setShowPromotionModal(false);
+
+        try {
+            await authAPI.allocateUser({
+                user_id: userId,
+                manager_id: managerId
+            });
+
+            setPopup({
+                show: true,
+                title: 'Promotion Success!',
+                message: `${promotionData.userName} is now a permanent report of ${promotionData.managerName}. Slack and Gmail notifications have been sent.`,
+                type: 'success',
+                mode: 'alert'
+            });
+        } catch (err) {
+            console.error("Promotion failed", err);
+            fetchData();
+        } finally {
+            setPromotionData(null);
         }
     };
 
@@ -433,6 +599,11 @@ const AdminAllocation = () => {
                                 {getUnassignedEmployees().map(user => {
                                     // Check if this user manages anyone
                                     const hasTeam = users.some(u => u.reporting_manager === user.id);
+                                    const managerColor = hasTeam ? availableManagers.find(m => m.id === user.id)?.color : null;
+
+                                    const activeAssignment = assignments.find(a => a.user === user.id && a.is_active);
+                                    const dottedManagerColor = activeAssignment ? availableManagers.find(m => m.id === activeAssignment.dotted_line_manager)?.color : null;
+
                                     return (
                                         <SortableItem
                                             key={user.id}
@@ -440,6 +611,9 @@ const AdminAllocation = () => {
                                             user={user}
                                             highlightManagers={true}
                                             hasTeam={hasTeam}
+                                            managerColor={managerColor}
+                                            isDimmed={!!activeAssignment}
+                                            dottedManagerColor={dottedManagerColor}
                                         />
                                     );
                                 })}
@@ -459,6 +633,10 @@ const AdminAllocation = () => {
                                 employees={getEmployeesForManager(manager.id)}
                                 onRemoveManager={handleRemoveManagerColumn}
                                 onUnassignUser={handleUnassignUser}
+                                color={manager.color}
+                                assignments={assignments}
+                                allManagers={availableManagers}
+                                allUsers={users}
                             />
                         ))}
 
@@ -519,6 +697,37 @@ const AdminAllocation = () => {
                             )}
                         </div>
                         <button className="btn-secondary" onClick={() => setShowAddManagerModal(false)}>Cancel</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Promotion Confirmation Modal */}
+            {showPromotionModal && promotionData && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
+                        <div style={{ background: '#ecfdf5', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                            <Users color="#10b981" size={32} />
+                        </div>
+                        <h3 style={{ marginBottom: '0.5rem' }}>Make Permanent?</h3>
+                        <p style={{ color: '#64748b', marginBottom: '2rem' }}>
+                            Are you sure you want to make <strong>{promotionData.userName}</strong> a permanent report of <strong>{promotionData.managerName}</strong>?
+                            <br />
+                            <span style={{ fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
+                                This will end their temporary assignment and send Slack/Email notifications.
+                            </span>
+                        </p>
+                        <div className="modal-actions" style={{ display: 'flex', gap: '1rem' }}>
+                            <button className="btn-secondary" onClick={() => {
+                                setShowPromotionModal(false);
+                                setPromotionData(null);
+                                fetchData(); // Refresh to undo optimistic UI if we cancel
+                            }} style={{ flex: 1 }}>
+                                Cancel
+                            </button>
+                            <button className="btn-primary" onClick={handleConfirmPromotion} style={{ flex: 1, background: '#10b981', borderColor: '#10b981' }}>
+                                Confirm Promotion
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

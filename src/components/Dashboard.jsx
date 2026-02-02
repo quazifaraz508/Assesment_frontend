@@ -123,7 +123,14 @@ const Dashboard = () => {
                                     {teamStatus.map((item, idx) => (
                                         <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                             <td style={{ padding: '1rem', color: '#334155', fontWeight: '500' }}>
-                                                <div>{item.employee_name}</div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    {item.employee_name}
+                                                    {item.is_temporary && (
+                                                        <span className="badge" title={`Temporary until ${item.temporary_end_date}`} style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fcd34d', fontSize: '0.7rem', padding: '2px 6px' }}>
+                                                            Temp
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{item.employee_email}</div>
                                             </td>
                                             <td style={{ padding: '1rem', color: '#475569' }}>{item.assessment_title}</td>
@@ -163,24 +170,45 @@ const Dashboard = () => {
                                                 {new Date(item.end_date).toLocaleDateString()}
                                             </td>
                                             <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                                {/* Review Button if applicable */}
-                                                {item.status === 'Submitted' && item.submission_id && (
-                                                    <button
-                                                        onClick={() => navigate(`/review-submission/${item.submission_id}`)}
-                                                        style={{
-                                                            background: '#0ea5e9',
-                                                            color: 'white',
-                                                            border: 'none',
-                                                            padding: '0.4rem 0.8rem',
-                                                            borderRadius: '6px',
-                                                            fontSize: '0.8rem',
-                                                            cursor: 'pointer',
-                                                            fontWeight: '500'
-                                                        }}
-                                                    >
-                                                        {item.is_reviewed ? 'Edit' : 'Review'}
-                                                    </button>
-                                                )}
+                                                {/* Review Button Logic: submitted OR temporary (blind review) */}
+                                                {(
+                                                    (item.status === 'Submitted' && item.submission_id) ||
+                                                    (item.is_temporary && item.priority !== 3) // Allow if temp and not expired
+                                                ) && (
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (item.submission_id) {
+                                                                    navigate(`/review-submission/${item.submission_id}`);
+                                                                } else {
+                                                                    // Start Blind Review
+                                                                    try {
+                                                                        const res = await authAPI.startBlindReview({
+                                                                            assessment_id: item.assessment_id,
+                                                                            employee_id: item.employee_id
+                                                                        });
+                                                                        if (res.data.submission_id) {
+                                                                            navigate(`/review-submission/${res.data.submission_id}`);
+                                                                        }
+                                                                    } catch (err) {
+                                                                        console.error('Failed to start blind review:', err);
+                                                                        alert('Could not start review. Please try again.');
+                                                                    }
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                background: item.is_temporary && !item.submission_id ? '#f59e0b' : '#0ea5e9',
+                                                                color: 'white',
+                                                                border: 'none',
+                                                                padding: '0.4rem 0.8rem',
+                                                                borderRadius: '6px',
+                                                                fontSize: '0.8rem',
+                                                                cursor: 'pointer',
+                                                                fontWeight: '500'
+                                                            }}
+                                                        >
+                                                            {item.submission_id ? (item.is_reviewed ? 'Edit' : 'Review') : 'Start Rating'}
+                                                        </button>
+                                                    )}
 
                                                 {/* Details Button */}
                                                 <button
@@ -262,6 +290,31 @@ const Dashboard = () => {
                                 </div>
                                 <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>
                                     Manage webhooks and Slack notification settings.
+                                </p>
+                            </div>
+                            <div
+                                onClick={() => navigate('/admin/dotted-allocation')}
+                                style={{
+                                    background: 'white',
+                                    padding: '1.5rem',
+                                    borderRadius: '12px',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                    border: '1px solid #e2e8f0',
+                                    cursor: 'pointer',
+                                    transition: 'transform 0.2s',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '0.5rem'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <h3 style={{ margin: 0, color: '#1e293b' }}>Dotted Line Allocation</h3>
+                                    <span style={{ fontSize: '1.2rem' }}>🔗</span>
+                                </div>
+                                <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>
+                                    Temporarily assign employees to different managers.
                                 </p>
                             </div>
                         </div>
@@ -432,6 +485,13 @@ const Dashboard = () => {
                                 style={{ flex: 1, minWidth: '200px', background: 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)' }}
                             >
                                 Slack Settings
+                            </button>
+                            <button
+                                onClick={() => navigate('/admin/dotted-allocation')}
+                                className="auth-button"
+                                style={{ flex: 1, minWidth: '200px', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
+                            >
+                                Dotted Allocation
                             </button>
                             <button
                                 onClick={() => navigate('/admin/settings')}

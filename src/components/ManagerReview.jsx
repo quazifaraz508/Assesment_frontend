@@ -21,6 +21,15 @@ const ManagerReview = () => {
     const [managerRemarks, setManagerRemarks] = useState({});
     const [managerScore, setManagerScore] = useState(0);
 
+    // Step 2 state
+    const [currentStep, setCurrentStep] = useState(1);
+    const [isStep2Submitted, setIsStep2Submitted] = useState(false);
+    const [step2Ratings, setStep2Ratings] = useState({});
+    const [step2Remarks, setStep2Remarks] = useState({});
+    const [reviewHistory, setReviewHistory] = useState([]);
+    const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(-1); // -1 means current Step 2
+    const [localHistoryIndices, setLocalHistoryIndices] = useState({}); // { qId: index } where index -2=Step1, -1=Current, 0+=History
+
     // Admin Review state
     const [adminRatings, setAdminRatings] = useState({});
     const [adminRemarks, setAdminRemarks] = useState({});
@@ -29,6 +38,7 @@ const ManagerReview = () => {
 
     // Toggle for Admin to edit THEIR review
     const [adminEditMode, setAdminEditMode] = useState(false);
+    const [managerEditMode, setManagerEditMode] = useState(false);
 
     // Disciplinary Actions state
     const [disciplinaryActions, setDisciplinaryActions] = useState([]);
@@ -36,7 +46,9 @@ const ManagerReview = () => {
     const [issuingAction, setIssuingAction] = useState(false);
     const [actionForm, setActionForm] = useState({
         type: '',
-        reason: ''
+        reason: '',
+        customLabel: '',
+        customDeduction: ''
     });
 
     // Custom Popup State
@@ -52,9 +64,11 @@ const ManagerReview = () => {
     const closePopup = () => setPopup(prev => ({ ...prev, show: false }));
 
     const actionTypes = [
-        { id: 'warning', label: 'Official Issued Warning', deduction: 2, color: '#fbbf24' },
-        { id: 'memo', label: 'Issued Memo', deduction: 5, color: '#f87171' },
-        { id: 'suspend', label: 'Suspend', deduction: 10, color: '#b91c1c' }
+        { id: 'verbal_warning', label: 'Verbal Warning (-1 point)', deduction: 1, color: '#94a3b8' },
+        { id: 'warning', label: 'Official Issued Warning (-2 points)', deduction: 2, color: '#fbbf24' },
+        { id: 'memo', label: 'Issued Memo (-5 points)', deduction: 5, color: '#f87171' },
+        { id: 'suspend', label: 'Suspend (-10 points)', deduction: 10, color: '#b91c1c' },
+        { id: 'custom', label: 'Custom Action', deduction: 0, color: '#6366f1' }
     ];
 
     useEffect(() => {
@@ -64,10 +78,27 @@ const ManagerReview = () => {
                 const data = res.data;
                 setSubmission(data);
 
-                // Populate Manager Review (Read-only for Admin usually, or editable if Manager)
+                // Populate Manager Review (Step 1)
                 if (data.existing_review) {
                     setManagerRatings(data.existing_review.ratings || {});
                     setManagerRemarks(data.existing_review.remarks || {});
+
+                    // Step 2 content
+                    setStep2Ratings(data.existing_review.step2_ratings || {});
+                    setStep2Remarks(data.existing_review.step2_remarks || {});
+                    setReviewHistory(data.existing_review.history || []);
+
+                    // Determine current step
+                    if (data.existing_review.step2_ratings && Object.keys(data.existing_review.step2_ratings).length > 0) {
+                        setCurrentStep(2);
+                        setIsStep2Submitted(true);
+                    } else if (data.existing_review.ratings && Object.keys(data.existing_review.ratings).length > 0) {
+                        // If only step 1 exists, stay on step 2 (reviewing phase)
+                        setCurrentStep(2);
+                    } else {
+                        setCurrentStep(1);
+                    }
+
                     setManagerScore(data.existing_review.total_score || 0);
                 }
 
@@ -88,13 +119,18 @@ const ManagerReview = () => {
                 const savedDraft = localStorage.getItem(draftKey);
                 if (savedDraft) {
                     try {
-                        const { ratings: draftRatings, remarks: draftRemarks } = JSON.parse(savedDraft);
+                        const { ratings: draftRatings, remarks: draftRemarks, step: draftStep } = JSON.parse(savedDraft);
                         if (role === 'admin') {
                             setAdminRatings(prev => ({ ...prev, ...draftRatings }));
                             setAdminRemarks(prev => ({ ...prev, ...draftRemarks }));
                         } else {
-                            setManagerRatings(prev => ({ ...prev, ...draftRatings }));
-                            setManagerRemarks(prev => ({ ...prev, ...draftRemarks }));
+                            if (draftStep === 1) {
+                                setManagerRatings(prev => ({ ...prev, ...draftRatings }));
+                                setManagerRemarks(prev => ({ ...prev, ...draftRemarks }));
+                            } else {
+                                setStep2Ratings(prev => ({ ...prev, ...draftRatings }));
+                                setStep2Remarks(prev => ({ ...prev, ...draftRemarks }));
+                            }
                         }
                     } catch (e) {
                         console.error("Failed to parse review draft", e);
@@ -118,21 +154,22 @@ const ManagerReview = () => {
         if (!loading && submission) {
             const role = user?.role === 'admin' ? 'admin' : 'manager';
             const draftKey = `review_draft_${submissionId}_${role}_${user?.id}`;
-            const ratings = role === 'admin' ? adminRatings : managerRatings;
-            const remarks = role === 'admin' ? adminRemarks : managerRemarks;
+            const ratings = role === 'admin' ? adminRatings : (currentStep === 1 ? managerRatings : step2Ratings);
+            const remarks = role === 'admin' ? adminRemarks : (currentStep === 1 ? managerRemarks : step2Remarks);
 
             // Only save if there's actually something to save
             if (Object.keys(ratings).length > 0 || Object.keys(remarks).length > 0) {
-                localStorage.setItem(draftKey, JSON.stringify({ ratings, remarks }));
+                localStorage.setItem(draftKey, JSON.stringify({ ratings, remarks, step: currentStep }));
             }
         }
-    }, [managerRatings, managerRemarks, adminRatings, adminRemarks, loading, submission, submissionId, user?.role, user?.id]);
+    }, [managerRatings, managerRemarks, step2Ratings, step2Remarks, adminRatings, adminRemarks, currentStep, loading, submission, submissionId, user?.role, user?.id]);
 
     // Calculate scores
     useEffect(() => {
-        const sum = Object.values(managerRatings).reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0);
+        const sourceData = (currentStep === 2 && Object.keys(step2Ratings).length > 0) ? step2Ratings : managerRatings;
+        const sum = Object.values(sourceData).reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0);
         setManagerScore(sum);
-    }, [managerRatings]);
+    }, [managerRatings, step2Ratings, currentStep]);
 
     useEffect(() => {
         const sum = Object.values(adminRatings).reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0);
@@ -160,19 +197,28 @@ const ManagerReview = () => {
         setAdminRemarks(prev => ({ ...prev, [qId]: val }));
     };
 
-    // Legacy handler for Manager (if user is manager)
+    // Handler for Manager Review
     const handleManagerRatingChange = (qId, val) => {
         const question = submission?.assessment?.questions?.find(q => q.id.toString() === qId.toString()) ||
             submission?.questions?.find(q => q.id.toString() === qId.toString());
         const maxScore = question?.max_score || 10;
         const num = val === '' ? '' : parseFloat(val);
+
         if (val === '' || (num >= 0 && num <= maxScore)) {
-            setManagerRatings(prev => ({ ...prev, [qId]: num }));
+            if (currentStep === 1) {
+                setManagerRatings(prev => ({ ...prev, [qId]: num }));
+            } else {
+                setStep2Ratings(prev => ({ ...prev, [qId]: num }));
+            }
         }
     };
 
     const handleManagerRemarkChange = (qId, val) => {
-        setManagerRemarks(prev => ({ ...prev, [qId]: val }));
+        if (currentStep === 1) {
+            setManagerRemarks(prev => ({ ...prev, [qId]: val }));
+        } else {
+            setStep2Remarks(prev => ({ ...prev, [qId]: val }));
+        }
     };
 
     const handleSubmitAdminReview = async (e) => {
@@ -198,7 +244,7 @@ const ManagerReview = () => {
                     mode: 'alert',
                     onConfirm: () => {
                         closePopup();
-                        window.location.reload(); // Reload or partial update? Reloading is safer.
+                        window.location.reload();
                     }
                 });
             } catch (err) {
@@ -225,64 +271,111 @@ const ManagerReview = () => {
         });
     };
 
-    // Existing submit for Manager
+    // Submit for Manager - Handles Step 1 and Step 2
     const handleSubmitManagerReview = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
 
-        const confirmSubmit = async () => {
-            setSubmitting(true);
-            try {
-                await authAPI.submitReview({
-                    submission_id: parseInt(submissionId),
-                    ratings: managerRatings,
-                    remarks: managerRemarks
-                });
+        if (currentStep === 1) {
+            setPopup({
+                show: true,
+                title: 'Confirm Submission',
+                message: 'Do you confirm? After this you will review the team member by seeing their answers.',
+                type: 'info',
+                mode: 'confirm',
+                onConfirm: async () => {
+                    setSubmitting(true);
+                    try {
+                        await authAPI.submitReview({
+                            submission_id: parseInt(submissionId),
+                            ratings: managerRatings,
+                            remarks: managerRemarks,
+                            step: 1
+                        });
 
-                // Clear Draft
-                localStorage.removeItem(`review_draft_${submissionId}_manager_${user?.id}`);
+                        // Copy ratings to step 2 for convenience
+                        setStep2Ratings({ ...managerRatings });
+                        setStep2Remarks({ ...managerRemarks });
 
-                setPopup({
-                    show: true,
-                    title: 'Success!',
-                    message: 'Manager Review submitted successfully!',
-                    type: 'success',
-                    mode: 'alert',
-                    onConfirm: () => {
-                        closePopup();
-                        navigate('/dashboard');
+                        setCurrentStep(2);
+                        setPopup({
+                            show: true,
+                            title: 'Step 1 Complete',
+                            message: 'You can now see the team member\'s answers and self-ratings. Please finalize your review.',
+                            type: 'success',
+                            mode: 'alert'
+                        });
+                    } catch (err) {
+                        console.error("Step 1 failed", err);
+                        setPopup({
+                            show: true,
+                            title: 'Error',
+                            message: err.response?.data?.error || 'Failed to submit Step 1.',
+                            type: 'error',
+                            mode: 'alert'
+                        });
+                    } finally {
+                        setSubmitting(false);
                     }
-                });
-            } catch (err) {
-                console.error("Submission failed", err);
-                setPopup({
-                    show: true,
-                    title: 'Submission Failed',
-                    message: err.response?.data?.error || 'Failed to submit review.',
-                    type: 'error',
-                    mode: 'alert'
-                });
-            } finally {
-                setSubmitting(false);
-            }
-        };
+                }
+            });
+        } else {
+            // Step 2 Submission
+            const confirmStep2 = async () => {
+                setSubmitting(true);
+                try {
+                    const res = await authAPI.submitReview({
+                        submission_id: parseInt(submissionId),
+                        ratings: step2Ratings,
+                        remarks: step2Remarks,
+                        step: 2
+                    });
 
-        setPopup({
-            show: true,
-            title: 'Confirm Submission',
-            message: 'Are you sure you want to submit this Manager Review?',
-            type: 'info',
-            mode: 'confirm',
-            onConfirm: confirmSubmit
-        });
+                    // Clear Draft
+                    localStorage.removeItem(`review_draft_${submissionId}_manager_${user?.id}`);
+
+                    setPopup({
+                        show: true,
+                        title: 'Success!',
+                        message: 'Manager Review submitted successfully!',
+                        type: 'success',
+                        mode: 'alert',
+                        onConfirm: () => {
+                            closePopup();
+                            navigate('/dashboard');
+                        }
+                    });
+                } catch (err) {
+                    console.error("Submission failed", err);
+                    setPopup({
+                        show: true,
+                        title: 'Submission Failed',
+                        message: err.response?.data?.error || 'Failed to submit review.',
+                        type: 'error',
+                        mode: 'alert'
+                    });
+                } finally {
+                    setSubmitting(false);
+                }
+            };
+
+            setPopup({
+                show: true,
+                title: 'Confirm Final Submission',
+                message: 'Are you sure you want to submit this finalized review?',
+                type: 'info',
+                mode: 'confirm',
+                onConfirm: confirmStep2
+            });
+        }
     };
 
     const handleIssueDisciplinaryAction = async (e) => {
         e.preventDefault();
-        if (!actionForm.type || !actionForm.reason) {
+        if (!actionForm.type || !actionForm.reason || (actionForm.type === 'custom' && (!actionForm.customLabel || !actionForm.customDeduction))) {
             setPopup({
                 show: true,
                 title: 'Missing Information',
-                message: 'Please select an action type and provide a reason.',
+                message: 'Please provide all details for the disciplinary action.',
                 type: 'warning',
                 mode: 'alert'
             });
@@ -290,17 +383,21 @@ const ManagerReview = () => {
         }
 
         const selected = actionTypes.find(a => a.id === actionForm.type);
+        const actionLabel = actionForm.type === 'custom' ? actionForm.customLabel : selected.label;
+        const actionDeduction = actionForm.type === 'custom' ? parseFloat(actionForm.customDeduction) : selected.deduction;
+
         setIssuingAction(true);
         try {
             const res = await authAPI.issueDisciplinaryAction({
-                user: submission.employee_id, // This is the user ID from the response
+                user: submission.employee_id,
                 submission: parseInt(submissionId),
                 action_type: actionForm.type,
-                deduction: -selected.deduction,
+                action_label: actionLabel, // New field for custom label
+                deduction: -Math.abs(actionDeduction),
                 reason: actionForm.reason
             });
             setDisciplinaryActions(prev => [res.data, ...prev]);
-            setActionForm({ type: '', reason: '' });
+            setActionForm({ type: '', reason: '', customLabel: '', customDeduction: '' });
             setShowDisciplinaryForm(false);
             setPopup({
                 show: true,
@@ -323,7 +420,8 @@ const ManagerReview = () => {
         }
     };
 
-    const handleRemoveDisciplinaryAction = async (id) => {
+    const handleRemoveDisciplinaryAction = (e, id) => {
+        if (e) e.preventDefault();
         const confirmRemove = () => {
             (async () => {
                 try {
@@ -345,8 +443,6 @@ const ManagerReview = () => {
                         type: 'error',
                         mode: 'alert'
                     });
-                } finally {
-                    closePopup();
                 }
             })();
         };
@@ -369,6 +465,65 @@ const ManagerReview = () => {
     if (error) return <div className="error-state">{error}</div>;
     if (!submission) return null;
 
+    // Display Rating/Remarks for a specific question based on role and current view
+    const getDisplayData = (qId) => {
+        const isAdmin = user?.is_staff;
+        const localIndex = localHistoryIndices[qId];
+        const activeIndex = localIndex !== undefined ? localIndex : selectedHistoryIndex;
+
+        // If activeIndex is -2 (Blind Review/Step 1)
+        if (activeIndex === -2) {
+            return {
+                rating: managerRatings[qId],
+                remark: managerRemarks[qId],
+                label: "Blind Review (Step 1)",
+                color: "#475569",
+                bgColor: "#f1f5f9",
+                borderColor: "#cbd5e1"
+            };
+        }
+
+        // If activeIndex is a history index (0+)
+        if (activeIndex !== -1) {
+            const h = reviewHistory[activeIndex];
+            const shades = [
+                { color: "#1d4ed8", bgColor: "#eff6ff", borderColor: "#bfdbfe" }, // Blue-600
+                { color: "#4338ca", bgColor: "#eef2ff", borderColor: "#c7d2fe" }, // Indigo-700
+                { color: "#4f46e5", bgColor: "#f5f3ff", borderColor: "#ddd6fe" }, // Indigo-600
+                { color: "#3730a3", bgColor: "#e0e7ff", borderColor: "#a5b4fc" }  // Indigo-800
+            ];
+            const shade = shades[activeIndex % shades.length];
+            return {
+                rating: h?.ratings?.[qId],
+                remark: h?.remarks?.[qId],
+                label: `Edited (Step 2 - Ver ${activeIndex + 1})`,
+                ...shade
+            };
+        }
+
+        // Default (activeIndex === -1) - Active Step (1 or 2)
+        if (currentStep === 1) {
+            return {
+                rating: managerRatings[qId],
+                remark: managerRemarks[qId],
+                label: "Assessment (Step 1)",
+                color: "#1d4ed8",
+                bgColor: "#eff6ff",
+                borderColor: "#bfdbfe"
+            };
+        } else {
+            // Step 2 Current
+            return {
+                rating: step2Ratings[qId],
+                remark: step2Remarks[qId],
+                label: "Final Review (Step 2 - Current)",
+                color: "#047857",
+                bgColor: "#f0fdf4",
+                borderColor: "#bbf7d0"
+            };
+        }
+    };
+
     return (
         <div className="manager-review-page" style={{ background: '#f8fafc', minHeight: '100vh', padding: '2rem' }}>
             <CustomPopup {...popup} onClose={closePopup} />
@@ -385,6 +540,108 @@ const ManagerReview = () => {
                                 <div>
                                     <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#1e293b' }}>Review Submission</h1>
                                     <h2 style={{ margin: '0.25rem 0 0', fontSize: '1.1rem', color: '#3b82f6', fontWeight: '500' }}>{submission.assessment_title}</h2>
+
+                                    {/* Multi-Step Indicator for Manager */}
+                                    {!user?.is_staff && (
+                                        <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                                            <div style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '12px', background: currentStep === 1 ? '#3b82f6' : '#e2e8f0', color: currentStep === 1 ? 'white' : '#64748b', fontWeight: '600' }}>Step 1: Blind Review</div>
+                                            <div style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '12px', background: currentStep === 2 ? '#3b82f6' : '#e2e8f0', color: currentStep === 2 ? 'white' : '#64748b', fontWeight: '600' }}>Step 2: Full Review</div>
+                                        </div>
+                                    )}
+
+                                    {/* Version Switcher for Admin/Manager in Step 2 */}
+                                    {(user?.is_staff || currentStep === 2) && (
+                                        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '20px', width: 'fit-content' }}>
+                                                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>Review Versions:</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedHistoryIndex(-2)}
+                                                        style={{
+                                                            fontSize: '0.75rem',
+                                                            padding: '0.2rem 0.6rem',
+                                                            borderRadius: '12px',
+                                                            background: selectedHistoryIndex === -2 ? '#3b82f6' : 'white',
+                                                            color: selectedHistoryIndex === -2 ? 'white' : '#64748b',
+                                                            border: '1px solid #e2e8f0',
+                                                            cursor: 'pointer',
+                                                            fontWeight: '600'
+                                                        }}
+                                                    >
+                                                        Blind (Step 1)
+                                                    </button>
+
+                                                    <div style={{ width: '1px', height: '16px', background: '#cbd5e1' }}></div>
+
+                                                    <button
+                                                        type="button"
+                                                        disabled={selectedHistoryIndex === -2}
+                                                        onClick={() => {
+                                                            if (selectedHistoryIndex === -1) {
+                                                                if (reviewHistory.length > 0) setSelectedHistoryIndex(reviewHistory.length - 1);
+                                                                else setSelectedHistoryIndex(-2);
+                                                            } else if (selectedHistoryIndex === 0) {
+                                                                setSelectedHistoryIndex(-2);
+                                                            } else if (selectedHistoryIndex > 0) {
+                                                                setSelectedHistoryIndex(prev => prev - 1);
+                                                            }
+                                                        }}
+                                                        style={{ background: 'none', border: 'none', cursor: selectedHistoryIndex === -2 ? 'default' : 'pointer', color: selectedHistoryIndex === -2 ? '#cbd5e1' : '#334155' }}
+                                                    >
+                                                        &lt;
+                                                    </button>
+
+                                                    <span
+                                                        onClick={() => setSelectedHistoryIndex(-1)}
+                                                        style={{
+                                                            fontSize: '0.85rem',
+                                                            fontWeight: '700',
+                                                            color: selectedHistoryIndex === -1 ? '#3b82f6' : '#64748b',
+                                                            cursor: 'pointer',
+                                                            textDecoration: selectedHistoryIndex === -1 ? 'underline' : 'none'
+                                                        }}
+                                                        title="Show Real Review"
+                                                    >
+                                                        {selectedHistoryIndex === -1 ? 'Real Review' : (selectedHistoryIndex === -2 ? 'Step 1 (Blind)' : `Edited V${selectedHistoryIndex + 1}`)}
+                                                    </span>
+
+                                                    <button
+                                                        type="button"
+                                                        disabled={selectedHistoryIndex === -1}
+                                                        onClick={() => {
+                                                            if (selectedHistoryIndex === -2) {
+                                                                if (reviewHistory.length > 0) setSelectedHistoryIndex(0);
+                                                                else setSelectedHistoryIndex(-1);
+                                                            } else if (selectedHistoryIndex === reviewHistory.length - 1) {
+                                                                setSelectedHistoryIndex(-1);
+                                                            } else if (selectedHistoryIndex >= 0) {
+                                                                setSelectedHistoryIndex(prev => prev + 1);
+                                                            }
+                                                        }}
+                                                        style={{ background: 'none', border: 'none', cursor: selectedHistoryIndex === -1 ? 'default' : 'pointer', color: selectedHistoryIndex === -1 ? '#cbd5e1' : '#334155' }}
+                                                    >
+                                                        &gt;
+                                                    </button>
+
+                                                    {selectedHistoryIndex !== -1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedHistoryIndex(-1)}
+                                                            style={{ fontSize: '0.7rem', color: '#3b82f6', background: 'white', border: '1px solid #3b82f6', borderRadius: '4px', padding: '0.1rem 0.4rem', cursor: 'pointer' }}
+                                                        >
+                                                            Show Real Review
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div style={{ fontSize: '0.7rem', color: '#94a3b8', paddingLeft: '0.5rem' }}>
+                                                {selectedHistoryIndex === -2 && "Viewing manager's initial blind review (before seeing employee answers)."}
+                                                {selectedHistoryIndex >= 0 && "Viewing a previous version of the manager's review after seeing employee answers."}
+                                                {selectedHistoryIndex === -1 && "Viewing the latest version of the manager's review."}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                     <div style={{ textAlign: 'right', fontSize: '0.9rem', color: '#64748b' }}>
@@ -428,6 +685,13 @@ const ManagerReview = () => {
                         const isManager = !user?.is_staff;
                         const isAdmin = user?.is_staff;
 
+                        const displayData = getDisplayData(q.id);
+                        const localIndex = localHistoryIndices[q.id];
+                        const activeIndex = localIndex !== undefined ? localIndex : selectedHistoryIndex;
+
+                        // Visibility Logic
+                        const showEmployeeData = isAdmin || currentStep === 2;
+
                         return (
                             <div key={q.id} className="review-card" style={{ marginBottom: '2.5rem', paddingBottom: '2.5rem', borderBottom: idx === submission.questions.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
 
@@ -438,14 +702,14 @@ const ManagerReview = () => {
                                         {q.text}
                                     </h3>
 
-                                    {/* Employee Answer Display - ONLY visible to Admin */}
-                                    {isAdmin && (
+                                    {/* Employee Answer Display - Hidden in Step 1 for Manager */}
+                                    {showEmployeeData ? (
                                         <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '1rem' }}>
                                             <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.5rem', fontWeight: '600' }}>EMPLOYEE ANSWER</div>
                                             <div style={{ color: '#334155', fontSize: '1rem' }}>
                                                 {Array.isArray(answer) ? answer.join(', ') : (answer || 'No answer provided')}
                                             </div>
-                                            {selfRating && (
+                                            {(selfRating !== undefined && selfRating !== null && selfRating !== '') && (
                                                 <div style={{ marginTop: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                     <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>SELF RATING:</div>
                                                     <div style={{ background: '#e0f2fe', color: '#0369a1', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: '600', fontSize: '0.9rem' }}>
@@ -454,18 +718,41 @@ const ManagerReview = () => {
                                                 </div>
                                             )}
                                         </div>
+                                    ) : (
+                                        <div style={{ background: '#fef2f2', padding: '1rem', borderRadius: '8px', border: '1px dashed #f87171', marginTop: '1rem', fontSize: '0.9rem', color: '#b91c1c', textAlign: 'center' }}>
+                                            <AlertCircle size={16} style={{ verticalAlign: 'middle', marginRight: '0.5rem' }} />
+                                            Employee answers and self-ratings are hidden during blind review (Step 1).
+                                        </div>
                                     )}
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
 
-                                    {/* Manager Review Section - Visible to All */}
-                                    <div style={{ background: '#fffbeb', padding: '1.5rem', borderRadius: '8px', border: '1px solid #fef3c7', position: 'relative' }}>
-                                        <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#b45309', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <Save size={14} /> Manager Review {isAdmin && "(Read Only)"}
-                                        </h4>
+                                    {/* Manager Review Section */}
+                                    <div style={{
+                                        background: displayData.bgColor,
+                                        padding: '1.5rem',
+                                        borderRadius: '8px',
+                                        border: `1px solid ${displayData.borderColor}`,
+                                        position: 'relative'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                            <h4 style={{ margin: 0, fontSize: '0.9rem', color: displayData.color, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <Save size={14} /> {displayData.label} {isAdmin && "(Read Only)"}
+                                            </h4>
 
-                                        <div style={{ marginBottom: '1rem' }}>
+                                            {isManager && currentStep === 2 && isStep2Submitted && !managerEditMode && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setManagerEditMode(true)}
+                                                    style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'white', border: '1px solid #166534', color: '#166534', cursor: 'pointer' }}
+                                                >
+                                                    Edit Review
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div style={{ marginBottom: isAdmin && reviewHistory.length > 0 ? '1rem' : '1.5rem' }}>
                                             <label style={{ display: 'block', fontSize: '0.9rem', color: '#4b5563', marginBottom: '0.5rem' }}>
                                                 Rating (out of {q.max_score || 10}) <span style={{ color: '#ef4444' }}>*</span>
                                             </label>
@@ -474,19 +761,19 @@ const ManagerReview = () => {
                                                     type="number"
                                                     min="0" max={q.max_score || 10} step="0.1"
                                                     required={isManager}
-                                                    disabled={isAdmin}
-                                                    value={managerRatings[q.id] ?? ''}
+                                                    disabled={isAdmin || (currentStep === 2 && isStep2Submitted && !managerEditMode) || activeIndex !== -1}
+                                                    value={displayData.rating ?? ''}
                                                     onChange={(e) => handleManagerRatingChange(q.id, e.target.value)}
                                                     style={{
                                                         width: '100%',
                                                         padding: '0.75rem 1rem', borderRadius: '6px',
                                                         border: '1px solid #d1d5db', fontSize: '1rem',
-                                                        background: isAdmin ? '#f9fafb' : 'white',
-                                                        cursor: isAdmin ? 'not-allowed' : 'text'
+                                                        background: (isAdmin || (isStep2Submitted && !managerEditMode) || activeIndex !== -1) ? '#f9fafb' : 'white',
+                                                        cursor: (isAdmin || (isStep2Submitted && !managerEditMode) || activeIndex !== -1) ? 'not-allowed' : 'text'
                                                     }}
                                                     placeholder={`0-${q.max_score || 10}`}
                                                 />
-                                                <Star size={18} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#fbbf24' }} />
+                                                <Star size={18} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: displayData.color }} />
                                             </div>
                                         </div>
                                         <div>
@@ -494,20 +781,70 @@ const ManagerReview = () => {
                                                 Remarks (Optional)
                                             </label>
                                             <textarea
-                                                value={managerRemarks[q.id] || ''}
+                                                value={displayData.remark || ''}
                                                 onChange={(e) => handleManagerRemarkChange(q.id, e.target.value)}
-                                                disabled={isAdmin}
+                                                disabled={isAdmin || (currentStep === 2 && isStep2Submitted && !managerEditMode) || activeIndex !== -1}
                                                 style={{
                                                     width: '100%', padding: '0.75rem 1rem', borderRadius: '6px',
                                                     border: '1px solid #d1d5db', fontSize: '0.9rem', minHeight: '80px',
-                                                    background: isAdmin ? '#f9fafb' : 'white', cursor: isAdmin ? 'not-allowed' : 'text'
+                                                    background: (isAdmin || (isStep2Submitted && !managerEditMode) || activeIndex !== -1) ? '#f9fafb' : 'white',
+                                                    cursor: (isAdmin || (isStep2Submitted && !managerEditMode) || activeIndex !== -1) ? 'not-allowed' : 'text'
                                                 }}
                                                 placeholder="Manager comments..."
                                             />
                                         </div>
+
+                                        {/* Local Switcher for Admin/Manager (Visible if history exists OR in Step 2) */}
+                                        {(user?.is_staff || currentStep === 2) && (reviewHistory.length > 0 || currentStep === 2) && (
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem', marginTop: '0.5rem', borderTop: '1px solid #f1f5f9', paddingTop: '0.8rem' }}>
+                                                <div style={{ display: 'flex', color: '#94a3b8', gap: '0.8rem' }}>
+                                                    <Save size={16} style={{ cursor: 'pointer' }} title="Current" onClick={() => setLocalHistoryIndices(p => ({ ...p, [q.id]: -1 }))} />
+                                                    <Save size={16} style={{ cursor: 'pointer' }} title="Reset to Step 1" onClick={() => setLocalHistoryIndices(p => ({ ...p, [q.id]: -2 }))} />
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#64748b' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (activeIndex === -1) {
+                                                                if (reviewHistory.length > 0) setLocalHistoryIndices(p => ({ ...p, [q.id]: reviewHistory.length - 1 }));
+                                                                else setLocalHistoryIndices(p => ({ ...p, [q.id]: -2 }));
+                                                            } else if (activeIndex === 0) {
+                                                                setLocalHistoryIndices(p => ({ ...p, [q.id]: -2 }));
+                                                            } else if (activeIndex > 0) {
+                                                                setLocalHistoryIndices(p => ({ ...p, [q.id]: activeIndex - 1 }));
+                                                            }
+                                                        }}
+                                                        disabled={activeIndex === -2}
+                                                        style={{ background: 'none', border: 'none', cursor: activeIndex === -2 ? 'not-allowed' : 'pointer', color: activeIndex === -2 ? '#cbd5e1' : '#64748b', fontSize: '1.2rem' }}
+                                                    >
+                                                        &lt;
+                                                    </button>
+                                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                                        {activeIndex === -2 ? 1 : (activeIndex === -1 ? reviewHistory.length + 2 : activeIndex + 2)} / {reviewHistory.length + 2}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (activeIndex === -2) {
+                                                                if (reviewHistory.length > 0) setLocalHistoryIndices(p => ({ ...p, [q.id]: 0 }));
+                                                                else setLocalHistoryIndices(p => ({ ...p, [q.id]: -1 }));
+                                                            } else if (activeIndex === reviewHistory.length - 1) {
+                                                                setLocalHistoryIndices(p => ({ ...p, [q.id]: -1 }));
+                                                            } else if (activeIndex >= 0) {
+                                                                setLocalHistoryIndices(p => ({ ...p, [q.id]: activeIndex + 1 }));
+                                                            }
+                                                        }}
+                                                        disabled={activeIndex === -1}
+                                                        style={{ background: 'none', border: 'none', cursor: activeIndex === -1 ? 'not-allowed' : 'pointer', color: activeIndex === -1 ? '#cbd5e1' : '#64748b', fontSize: '1.2rem' }}
+                                                    >
+                                                        &gt;
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {/* Admin Review Section - Visible ONLY if Admin */}
+                                    {/* Admin Review Section */}
                                     {isAdmin && (
                                         <div style={{ background: '#f0f9ff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #bae6fd' }}>
                                             <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -576,7 +913,7 @@ const ManagerReview = () => {
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <MessageSquare size={20} style={{ color: '#64748b' }} /> Disciplinary Record
                             </h3>
-                            {user?.is_staff && !showDisciplinaryForm && (
+                            {!showDisciplinaryForm && (
                                 <button
                                     type="button"
                                     onClick={() => setShowDisciplinaryForm(true)}
@@ -605,7 +942,7 @@ const ManagerReview = () => {
                                             ))}
                                         </select>
                                     </div>
-                                    <div style={{ gridColumn: 'span 2' }}>
+                                    <div style={{ gridColumn: actionForm.type === 'custom' ? 'span 1' : 'span 2' }}>
                                         <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.4rem' }}>Reason</label>
                                         <input
                                             type="text"
@@ -615,6 +952,31 @@ const ManagerReview = () => {
                                             style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
                                         />
                                     </div>
+                                    {actionForm.type === 'custom' && (
+                                        <>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.4rem' }}>Custom Label</label>
+                                                <input
+                                                    type="text"
+                                                    value={actionForm.customLabel}
+                                                    onChange={(e) => setActionForm(prev => ({ ...prev, customLabel: e.target.value }))}
+                                                    placeholder="e.g. Behavioral Issue"
+                                                    style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.4rem' }}>Deduction (Points)</label>
+                                                <input
+                                                    type="number"
+                                                    value={actionForm.customDeduction}
+                                                    onChange={(e) => setActionForm(prev => ({ ...prev, customDeduction: e.target.value }))}
+                                                    placeholder="Points to deduct"
+                                                    min="0"
+                                                    style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                                />
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                                     <button
@@ -648,8 +1010,8 @@ const ManagerReview = () => {
                                     return (
                                         <div key={action.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderRadius: '8px', border: '1px solid #f1f5f9', background: '#fff' }}>
                                             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                                <div style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', background: `${type?.color}15`, color: type?.color, fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase' }}>
-                                                    {type?.label || action.action_type}
+                                                <div style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', background: `${type?.color || '#6366f1'}15`, color: type?.color || '#6366f1', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase' }}>
+                                                    {action.action_label || type?.label || action.action_type}
                                                 </div>
                                                 <div>
                                                     <div style={{ fontSize: '0.9rem', color: '#334155', fontWeight: '500' }}>{action.reason}</div>
@@ -660,9 +1022,10 @@ const ManagerReview = () => {
                                                 <div style={{ color: '#f87171', fontWeight: '700', fontSize: '1rem' }}>
                                                     {action.deduction} pts
                                                 </div>
-                                                {user?.is_staff && (
+                                                {(user?.is_staff || action.issued_by === user?.id) && (
                                                     <button
-                                                        onClick={() => handleRemoveDisciplinaryAction(action.id)}
+                                                        type="button"
+                                                        onClick={(e) => handleRemoveDisciplinaryAction(e, action.id)}
                                                         style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.4rem', borderRadius: '4px', transition: 'all 0.2s' }}
                                                         onMouseOver={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fee2e2'; }}
                                                         onMouseOut={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'none'; }}
@@ -751,6 +1114,7 @@ const ManagerReview = () => {
 
                             {!user?.is_staff && (
                                 <button
+                                    type="button"
                                     onClick={handleSubmitManagerReview}
                                     disabled={submitting}
                                     style={{
@@ -770,7 +1134,7 @@ const ManagerReview = () => {
                                     }}
                                 >
                                     <Save size={18} />
-                                    {submitting ? 'Submitting...' : 'Submit Review'}
+                                    {submitting ? 'Submitting...' : (currentStep === 1 ? 'Next: Full Review' : 'Submit Final Review')}
                                 </button>
                             )}
 

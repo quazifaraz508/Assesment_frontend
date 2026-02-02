@@ -14,6 +14,7 @@ const AdminAssessments = () => {
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAllAssessments, setShowAllAssessments] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Assessment Form State
     const [formData, setFormData] = useState({
@@ -142,6 +143,7 @@ const AdminAssessments = () => {
             end_date: new Date(formData.end_date).toISOString()
         };
 
+        setIsSubmitting(true);
         try {
             await authAPI.createAssessment(payload);
             fetchAssessments();
@@ -156,6 +158,8 @@ const AdminAssessments = () => {
         } catch (e) {
             console.error(e);
             setPopup({ show: true, title: 'Submission Failed', message: 'Failed to create assessment.', type: 'error', mode: 'alert' });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -299,6 +303,7 @@ const AdminAssessments = () => {
 
     const handleSaveAssessmentEdit = async (e) => {
         e.preventDefault();
+        setIsSubmitting(true);
         try {
             const payload = {
                 ...editAssessmentForm,
@@ -312,6 +317,8 @@ const AdminAssessments = () => {
         } catch (err) {
             console.error('Failed to update assessment:', err);
             setPopup({ show: true, title: 'Error', message: 'Failed to update assessment.', type: 'error', mode: 'alert' });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -495,7 +502,16 @@ const AdminAssessments = () => {
                             </div>
                         </div>
 
-                        <button type="submit" className="auth-button">Create Assessment</button>
+                        <button type="submit" className="auth-button" disabled={isSubmitting}>
+                            {isSubmitting ? (
+                                <div className="button-content">
+                                    <div className="spinner"></div>
+                                    <span>Creating...</span>
+                                </div>
+                            ) : (
+                                'Create Assessment'
+                            )}
+                        </button>
                     </form>
                 </div>
 
@@ -866,8 +882,16 @@ const AdminAssessments = () => {
                                 type="submit"
                                 className="auth-button"
                                 style={{ width: '100%' }}
+                                disabled={isSubmitting}
                             >
-                                Save Changes
+                                {isSubmitting ? (
+                                    <div className="button-content">
+                                        <div className="spinner"></div>
+                                        <span>Saving...</span>
+                                    </div>
+                                ) : (
+                                    'Save Changes'
+                                )}
                             </button>
                         </form>
                     </div>

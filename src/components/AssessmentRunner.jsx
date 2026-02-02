@@ -177,6 +177,7 @@ const AssessmentRunner = () => {
                 type: 'error',
                 mode: 'alert'
             });
+        } finally {
             setSubmitting(false);
         }
     };

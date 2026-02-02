@@ -12,6 +12,7 @@ const TreeNode = ({ node, currentUserId }) => {
     const [expanded, setExpanded] = useState(true);
     const hasChildren = node.children && node.children.length > 0;
     const isCurrentUser = node.id === currentUserId;
+    const isTemporary = node.is_temporary;
 
     // Helper to get image URL
     const getImageUrl = (path) => {
@@ -21,10 +22,32 @@ const TreeNode = ({ node, currentUserId }) => {
 
     const profilePic = getImageUrl(node.profile_picture);
 
+    // Determine colors
+    let mainColor = '#6366f1'; // Default Primary
+    let bgColor = '#fff';
+
+    if (isCurrentUser) {
+        mainColor = '#a855f7'; // Purple
+        bgColor = '#f3e8ff';
+    } else if (isTemporary) {
+        mainColor = '#14b8a6'; // Teal for Temporary
+        bgColor = '#f0fdfa';
+    } else if (hasChildren) {
+        mainColor = '#f59e0b'; // Orange for Managers
+        bgColor = '#fffbeb';
+    }
+
     return (
         <div className="tree-node-wrapper">
             <div className="tree-node-content" onClick={() => setExpanded(!expanded)}>
-                <div className={`node-card ${hasChildren ? 'is-parent' : ''} ${isCurrentUser ? 'is-current-user' : ''}`}>
+                <div
+                    className={`node-card`} // Removed is-parent/is-current-user to strict control styles here
+                    style={{
+                        borderTop: `4px solid ${mainColor}`,
+                        background: isCurrentUser || isTemporary || hasChildren ? `linear-gradient(to bottom, #fff, ${bgColor})` : '#fff',
+                        boxShadow: isCurrentUser ? `0 0 0 4px rgba(168, 85, 247, 0.2)` : ''
+                    }}
+                >
                     {profilePic ? (
                         <img
                             src={profilePic}
@@ -35,17 +58,50 @@ const TreeNode = ({ node, currentUserId }) => {
                                 height: '50px',
                                 borderRadius: '50%',
                                 objectFit: 'cover',
-                                border: isCurrentUser ? '2px solid #a855f7' : '2px solid #e2e8f0',
+                                border: `2px solid ${mainColor}`,
                                 marginBottom: '0.5rem'
                             }}
                         />
                     ) : (
-                        <div className="node-avatar">{node.name.charAt(0)}</div>
+                        <div
+                            className="node-avatar"
+                            style={{
+                                border: `2px solid ${mainColor}`,
+                                color: mainColor,
+                                background: bgColor
+                            }}
+                        >
+                            {node.name.charAt(0)}
+                        </div>
                     )}
 
                     <div className="node-info">
-                        <strong>{node.name} {isCurrentUser && '(You)'}</strong>
-                        <span className="node-role">{node.designation || node.role}</span>
+                        <strong>
+                            {node.name} {isCurrentUser && '(You)'}
+                        </strong>
+                        <span
+                            className="node-role"
+                            style={{
+                                color: mainColor, // Match theme
+                                background: bgColor
+                            }}
+                        >
+                            {node.designation || node.role}
+                        </span>
+                        {isTemporary && (
+                            <span
+                                className="badge"
+                                style={{
+                                    marginTop: '4px',
+                                    background: '#ccfbf1',
+                                    color: '#0f766e',
+                                    fontSize: '0.7rem',
+                                    border: '1px solid #5eead4'
+                                }}
+                            >
+                                Temporary
+                            </span>
+                        )}
                     </div>
                 </div>
                 {hasChildren && (

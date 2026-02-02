@@ -81,6 +81,7 @@ export const authAPI = {
     submitAdminReview: (data) => api.post('/reporting/submit-admin-review/', data),
     issueDisciplinaryAction: (data) => api.post('/reporting/issue-disciplinary-action/', data),
     removeDisciplinaryAction: (id) => api.delete(`/reporting/disciplinary-action/${id}/delete/`),
+    startBlindReview: (data) => api.post('/reporting/review/start-blind/', data),
 
     // Employee Assessments
     getEmployeeAssessments: () => api.get('/employee/assessments/'),
@@ -109,6 +110,10 @@ export const authAPI = {
     getSlackWebhooks: () => api.get('/slack/webhooks/'),
     addSlackWebhook: (data) => api.post('/slack/webhooks/', data),
     deleteSlackWebhook: (id) => api.delete(`/slack/webhooks/${id}/`),
+    // Dotted Line Allocation
+    getDottedAllocations: () => api.get('/reporting/dotted-allocation/'),
+    allocateDottedUser: (data) => api.post('/reporting/dotted-allocation/', data),
+    removeDottedAllocation: (id) => api.delete(`/reporting/dotted-allocation/${id}/`),
 };
 
 export default api;

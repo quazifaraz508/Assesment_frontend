@@ -15,6 +15,7 @@ import ManagerReview from './components/ManagerReview';
 import EmployeeHistory from './components/EmployeeHistory';
 import AdminGlobalHistory from './components/AdminGlobalHistory';
 import AdminSlackSettings from './components/AdminSlackSettings';
+import DottedLineAllocation from './components/DottedLineAllocation';
 import './index.css';
 
 // Loading Component
@@ -168,6 +169,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AdminSlackSettings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/dotted-allocation"
+            element={
+              <ProtectedRoute>
+                <DottedLineAllocation />
               </ProtectedRoute>
             }
           />
