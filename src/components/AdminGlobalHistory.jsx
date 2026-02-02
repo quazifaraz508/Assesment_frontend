@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
-import { Search, FileText, ArrowLeft } from 'lucide-react';
+import DashboardLayout from './DashboardLayout';
+import { Search, FileText } from 'lucide-react';
 
-const AdminGlobalHistory = () => {
+const AdminGlobalHistory = ({ embedded = false }) => {
     const navigate = useNavigate();
     const [submissions, setSubmissions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -31,74 +31,56 @@ const AdminGlobalHistory = () => {
         fetchSubmissions(searchTerm);
     };
 
-    return (
-        <div style={{ padding: '2rem', background: '#f8fafc', minHeight: '100vh' }}>
-            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <button onClick={() => navigate('/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', borderRadius: '50%', color: '#64748b' }}>
-                            <ArrowLeft size={24} />
-                        </button>
-                        <div>
-                            <h1 style={{ fontSize: '1.8rem', color: '#1e293b', margin: 0 }}>Global Assessment History</h1>
-                            <p style={{ color: '#64748b', margin: '0.2rem 0 0' }}>View and search all employee assessments</p>
-                        </div>
-                    </div>
-                </header>
+    const content = (
+        <>
+            {/* Search Bar */}
+            <form onSubmit={handleSearch} className="mb-6 flex gap-3">
+                <div className="relative flex-1 max-w-md">
+                    <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Search by name, email or assessment..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-12 pr-4 py-3 bg-white/80 backdrop-blur-sm border border-violet-100 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all"
+                    />
+                </div>
+                <button
+                    type="submit"
+                    className="px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold rounded-xl shadow-lg shadow-violet-500/30 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                >
+                    Search
+                </button>
+            </form>
 
-                {/* Search Bar */}
-                <form onSubmit={handleSearch} style={{ marginBottom: '2rem', display: 'flex', gap: '1rem' }}>
-                    <div style={{ position: 'relative', flex: 1, maxWidth: '500px' }}>
-                        <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                        <input
-                            type="text"
-                            placeholder="Search by name, email or assessment..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            style={{
-                                width: '100%',
-                                padding: '0.8rem 1rem 0.8rem 3rem',
-                                borderRadius: '8px',
-                                border: '1px solid #cbd5e1',
-                                fontSize: '1rem',
-                                outline: 'none'
-                            }}
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        style={{
-                            background: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            padding: '0 1.5rem',
-                            borderRadius: '8px',
-                            fontWeight: '500',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        Search
-                    </button>
-                </form>
-
-                <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
-                                <th style={{ padding: '1rem', color: '#475569', fontWeight: '600', fontSize: '0.9rem' }}>Employee</th>
-                                <th style={{ padding: '1rem', color: '#475569', fontWeight: '600', fontSize: '0.9rem' }}>Assessment</th>
-                                <th style={{ padding: '1rem', color: '#475569', fontWeight: '600', fontSize: '0.9rem' }}>Submitted At</th>
-                                <th style={{ padding: '1rem', color: '#475569', fontWeight: '600', fontSize: '0.9rem' }}>Self Score</th>
-                                <th style={{ padding: '1rem', color: '#475569', fontWeight: '600', fontSize: '0.9rem' }}>Manager Score</th>
-                                <th style={{ padding: '1rem', color: '#475569', fontWeight: '600', fontSize: '0.9rem' }}>Difference</th>
-                                <th style={{ padding: '1rem', color: '#475569', fontWeight: '600', fontSize: '0.9rem' }}>Action</th>
+            {/* Results Table */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-violet-100 shadow-lg shadow-violet-100/50 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-gradient-to-r from-violet-50 to-purple-50 border-b border-violet-100">
+                            <tr>
+                                <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider">Employee</th>
+                                <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider">Assessment</th>
+                                <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider">Submitted At</th>
+                                <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider">Self Score</th>
+                                <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider">Manager Score</th>
+                                <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider">Difference</th>
+                                <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider text-right">Action</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-violet-50">
                             {loading ? (
-                                <tr><td colSpan="7" style={{ padding: '2rem', textAlign: 'center' }}>Loading...</td></tr>
+                                <tr>
+                                    <td colSpan="7" className="px-6 py-12 text-center text-slate-500">
+                                        Loading...
+                                    </td>
+                                </tr>
                             ) : submissions.length === 0 ? (
-                                <tr><td colSpan="7" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No submissions found.</td></tr>
+                                <tr>
+                                    <td colSpan="7" className="px-6 py-12 text-center text-slate-400">
+                                        No submissions found.
+                                    </td>
+                                </tr>
                             ) : (
                                 submissions.map((sub, idx) => {
                                     const hasManagerScore = sub.manager_score !== null && sub.manager_score !== undefined;
@@ -107,79 +89,72 @@ const AdminGlobalHistory = () => {
                                     const difference = hasManagerScore ? (adjustedManagerScore - sub.self_score) : null;
 
                                     return (
-                                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                            <td style={{ padding: '1rem' }}>
-                                                <div style={{ fontWeight: '500', color: '#334155' }}>{sub.employee_name}</div>
-                                                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{sub.employee_email}</div>
+                                        <tr key={idx} className="hover:bg-violet-50/50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="font-semibold text-slate-800">{sub.employee_name}</div>
+                                                <div className="text-sm text-slate-400">{sub.employee_email}</div>
                                             </td>
-                                            <td style={{ padding: '1rem', color: '#334155' }}>{sub.assessment_title}</td>
-                                            <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
+                                            <td className="px-6 py-4 text-slate-600 font-medium">{sub.assessment_title}</td>
+                                            <td className="px-6 py-4 text-slate-500 text-sm">
                                                 {new Date(sub.submitted_at).toLocaleDateString()}
                                             </td>
-                                            <td style={{ padding: '1rem', fontWeight: '600', color: '#3b82f6' }}>
-                                                {sub.self_score.toFixed(1)}
-                                                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '400', marginLeft: '0.2rem' }}>/{sub.max_score || 0}</span>
+                                            <td className="px-6 py-4">
+                                                <span className="font-bold text-sky-600">{sub.self_score.toFixed(1)}</span>
+                                                <span className="text-xs text-slate-400 ml-1">/{sub.max_score || 0}</span>
                                             </td>
-                                            <td style={{ padding: '1rem', fontWeight: '600' }}>
+                                            <td className="px-6 py-4">
                                                 {hasManagerScore ? (
-                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                        <span style={{ color: '#10b981' }}>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-emerald-600">
                                                             {adjustedManagerScore.toFixed(1)}
-                                                            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '400', marginLeft: '0.2rem' }}>/{sub.max_score || 0}</span>
+                                                            <span className="text-xs text-slate-400 ml-1">/{sub.max_score || 0}</span>
                                                         </span>
                                                         {totalDeduction < 0 && (
-                                                            <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: '400' }}>
+                                                            <span className="text-xs text-red-500">
                                                                 {sub.manager_score.toFixed(1)} {totalDeduction.toFixed(1)}
                                                             </span>
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <span style={{ color: '#cbd5e1' }}>-</span>
+                                                    <span className="text-slate-300">-</span>
                                                 )}
                                             </td>
-                                            <td style={{ padding: '1rem' }}>
+                                            <td className="px-6 py-4">
                                                 {hasManagerScore ? (
-                                                    <span style={{
-                                                        fontWeight: '600',
-                                                        color: difference > 0 ? '#16a34a' : difference < 0 ? '#dc2626' : '#64748b',
-                                                        display: 'inline-block',
-                                                        minWidth: '40px'
-                                                    }}>
+                                                    <span className={`font-bold ${difference > 0 ? 'text-emerald-600' : difference < 0 ? 'text-red-600' : 'text-slate-500'
+                                                        }`}>
                                                         {difference > 0 ? '+' : ''}{difference.toFixed(1)}
                                                     </span>
                                                 ) : (
-                                                    <span style={{ color: '#cbd5e1' }}>-</span>
+                                                    <span className="text-slate-300">-</span>
                                                 )}
                                             </td>
-                                            <td style={{ padding: '1rem' }}>
+                                            <td className="px-6 py-4 text-right">
                                                 <button
                                                     onClick={() => navigate(`/review-submission/${sub.submission_id}`)}
-                                                    style={{
-                                                        background: 'white',
-                                                        border: '1px solid #cbd5e1',
-                                                        color: '#475569',
-                                                        padding: '0.4rem 0.8rem',
-                                                        borderRadius: '6px',
-                                                        fontSize: '0.85rem',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '0.4rem'
-                                                    }}
+                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-violet-200 text-slate-600 text-xs font-bold rounded-lg hover:bg-violet-50 hover:border-violet-300 transition-all"
                                                 >
                                                     <FileText size={14} />
                                                     Details
                                                 </button>
                                             </td>
                                         </tr>
-                                    )
+                                    );
                                 })
                             )}
                         </tbody>
                     </table>
                 </div>
             </div>
-        </div>
+        </>
+    );
+
+    if (embedded) return content;
+
+    return (
+        <DashboardLayout title="Global Assessment History" subtitle="View and search all employee assessments">
+            {content}
+        </DashboardLayout>
     );
 };
 

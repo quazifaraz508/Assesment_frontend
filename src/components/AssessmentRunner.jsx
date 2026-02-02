@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import ProfileMenu from './ProfileMenu';
+import DashboardLayout from './DashboardLayout';
 import CustomPopup from './CustomPopup';
-import '../styles/Auth.css';
+import { AlertCircle, CheckCircle2, Clock, Save } from 'lucide-react';
 
 const AssessmentRunner = () => {
     const { id } = useParams();
@@ -21,7 +21,6 @@ const AssessmentRunner = () => {
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [showValidationErrors, setShowValidationErrors] = useState(false);
 
-    // Custom Popup State
     const [popup, setPopup] = useState({
         show: false,
         title: '',
@@ -48,7 +47,6 @@ const AssessmentRunner = () => {
 
                     if (found.is_submitted) {
                         setIsSubmitted(true);
-                        // Fetch submission details
                         try {
                             const subRes = await authAPI.getAssessmentSubmission(id);
                             setAnswers(subRes.data.answers || {});
@@ -57,9 +55,8 @@ const AssessmentRunner = () => {
                             console.error("Failed to fetch submission", subErr);
                         }
 
-                        // If not expired, allow editing
                         if (now <= endDate) {
-                            setIsSubmitted(false); // Enable editing
+                            setIsSubmitted(false);
                         }
                     } else if (now > endDate) {
                         setPopup({
@@ -76,7 +73,6 @@ const AssessmentRunner = () => {
                         return;
                     }
 
-                    // Load Draft if not submitted or if editable
                     if (!found.is_submitted || now <= endDate) {
                         const draftKey = `assessment_draft_${id}_${user?.id}`;
                         const savedDraft = localStorage.getItem(draftKey);
@@ -104,7 +100,6 @@ const AssessmentRunner = () => {
         fetchAssessment();
     }, [id, navigate, user?.id]);
 
-    // Save Draft on changes
     useEffect(() => {
         if (!loading && assessment && !isSubmitted) {
             const draftKey = `assessment_draft_${id}_${user?.id}`;
@@ -121,11 +116,9 @@ const AssessmentRunner = () => {
     };
 
     const handleRatingChange = (questionId, value) => {
-        // Find current question to get its max_score
         const question = questions.find(q => q.id.toString() === questionId.toString());
         const maxScore = question?.max_score || 10;
 
-        // Allow empty string or valid number 0 to maxScore
         const numValue = value === '' ? '' : parseFloat(value);
         if (value === '' || (numValue >= 0 && numValue <= maxScore)) {
             setRatings(prev => ({
@@ -135,18 +128,15 @@ const AssessmentRunner = () => {
         }
     };
 
-    // Calculate total self-rating score
     const totalRating = Object.values(ratings).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
     const maxTotalRating = questions.reduce((sum, q) => sum + (q.max_score || 10), 0);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Validate that all questions have a rating
         const missingRatings = questions.some(q => ratings[q.id] === undefined || ratings[q.id] === '');
         if (missingRatings) {
             setShowValidationErrors(true);
-            // Optional: scroll to first error
             return;
         }
 
@@ -154,7 +144,6 @@ const AssessmentRunner = () => {
         try {
             await authAPI.submitAssessment(id, { answers, ratings });
 
-            // Clear Draft
             localStorage.removeItem(`assessment_draft_${id}_${user?.id}`);
 
             setPopup({
@@ -181,47 +170,62 @@ const AssessmentRunner = () => {
         }
     };
 
-    if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading assessment...</div>;
-    if (error) return <div style={{ color: '#ef4444', padding: '2rem', textAlign: 'center' }}>{error}</div>;
+    if (loading) {
+        return (
+            <DashboardLayout title="Assessment" subtitle="Loading...">
+                <div className="flex items-center justify-center h-64">
+                    <div className="w-12 h-12 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
+    if (error) {
+        return (
+            <DashboardLayout title="Assessment" subtitle="Error">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center text-red-600">
+                    <AlertCircle size={48} className="mx-auto mb-4 opacity-50" />
+                    {error}
+                </div>
+            </DashboardLayout>
+        );
+    }
+
     if (!assessment) return null;
 
     const isExpired = new Date() > new Date(assessment.end_date);
 
-    // Determine if the form should be read-only.
-    // It is read-only if isSubmitted (which implies expired or user viewing past submission without edit rights)
-    // Note: We set isSubmitted = false if it IS editable above. 
-    // So if isSubmitted is true here, it means "View Only".
-
     return (
-        <div className="assessment-runner-page" style={{
-            minHeight: '100vh',
-            background: '#f8fafc',
-            padding: '2rem'
-        }}>
+        <DashboardLayout
+            title={assessment.title}
+            subtitle={assessment.is_submitted && !isExpired ? "Edit your response" : (assessment.is_submitted ? "Your Submission" : "Complete the assessment below")}
+        >
             <CustomPopup {...popup} onClose={closePopup} />
-            <div className="assessment-runner-container" style={{
-                maxWidth: '800px',
-                margin: '0 auto',
-                background: 'white',
-                borderRadius: '12px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                padding: '2rem'
-            }}>
-                <header style={{ marginBottom: '2rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#1e293b' }}>{assessment.title}</h1>
-                        {/* Timer could go here */}
-                    </div>
-                    <p style={{ margin: 0, color: '#64748b' }}>
-                        {assessment.is_submitted && !isExpired ? "Edit your response" : (assessment.is_submitted ? "Your Submission" : "Complete the assessment below")}
-                    </p>
-                </header>
 
-                <form onSubmit={handleSubmit}>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-violet-100 shadow-lg shadow-violet-100/50 overflow-hidden">
+                {/* Progress Header */}
+                <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-4 flex items-center justify-between">
+                    <div className="text-white">
+                        <p className="text-sm font-medium opacity-80">
+                            {isSubmitted ? 'Viewing Submission' : 'In Progress'}
+                        </p>
+                        <p className="text-lg font-bold">{questions.length} Questions</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-white/80 text-sm">
+                        <Clock size={16} />
+                        Due: {new Date(assessment.end_date).toLocaleDateString()}
+                    </div>
+                </div>
+
+                {/* Questions */}
+                <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     {questions.map((q, idx) => (
-                        <div key={idx} className="question-card" style={{ marginBottom: '2rem' }}>
-                            <p style={{ marginBottom: '1rem', fontWeight: '600', color: '#334155', fontSize: '1.1rem' }}>
-                                {idx + 1}. {q.text}
+                        <div key={idx} className="bg-violet-50/50 border border-violet-100 rounded-xl p-5">
+                            <p className="font-bold text-slate-800 mb-4 text-lg">
+                                <span className="inline-flex items-center justify-center w-8 h-8 mr-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white text-sm rounded-full">
+                                    {idx + 1}
+                                </span>
+                                {q.text}
                             </p>
 
                             {q.type === 'text' && (
@@ -229,30 +233,18 @@ const AssessmentRunner = () => {
                                     value={answers[q.id] || ''}
                                     onChange={(e) => handleAnswerChange(q.id, e.target.value)}
                                     disabled={isSubmitted}
-                                    style={{
-                                        width: '100%',
-                                        padding: '1rem',
-                                        borderRadius: '8px',
-                                        border: '1px solid #cbd5e1',
-                                        minHeight: '120px',
-                                        fontSize: '1rem',
-                                        backgroundColor: isSubmitted ? '#f1f5f9' : 'white'
-                                    }}
+                                    className={`w-full px-4 py-3 bg-white border border-violet-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent transition resize-none outline-none min-h-[120px] ${isSubmitted ? 'bg-slate-100 cursor-not-allowed' : ''
+                                        }`}
+                                    placeholder="Type your answer here..."
                                     required={!isSubmitted}
                                 />
                             )}
 
                             {(q.type === 'radio' || q.type === 'checkbox') && (
-                                <div className="options-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                <div className="flex flex-col gap-3">
                                     {q.options.map((opt, optIdx) => (
-                                        <label key={optIdx} style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            cursor: isSubmitted ? 'default' : 'pointer',
-                                            padding: '0.5rem',
-                                            borderRadius: '6px',
-                                            background: '#fff'
-                                        }}>
+                                        <label key={optIdx} className={`flex items-center px-4 py-3 bg-white border border-violet-100 rounded-lg cursor-pointer hover:bg-violet-50 transition ${isSubmitted ? 'cursor-not-allowed opacity-70' : ''
+                                            }`}>
                                             <input
                                                 type={q.type}
                                                 name={`q-${q.id}`}
@@ -269,30 +261,17 @@ const AssessmentRunner = () => {
                                                     }
                                                 }}
                                                 disabled={isSubmitted}
-                                                style={{ marginRight: '0.75rem', width: '1.2rem', height: '1.2rem' }}
+                                                className="mr-3 w-5 h-5 text-violet-600 focus:ring-violet-500"
                                             />
-                                            <span style={{ color: '#475569' }}>{opt}</span>
+                                            <span className="text-slate-700">{opt}</span>
                                         </label>
                                     ))}
                                 </div>
                             )}
 
                             {/* Self-Rating Input */}
-                            <div style={{
-                                marginTop: '1rem',
-                                padding: '0.75rem 1rem',
-                                background: '#f8fafc',
-                                borderRadius: '8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '1rem'
-                            }}>
-                                <label style={{
-                                    color: '#64748b',
-                                    fontWeight: '500',
-                                    fontSize: '0.9rem',
-                                    whiteSpace: 'nowrap'
-                                }}>
+                            <div className="mt-4 p-4 bg-white border border-violet-200 rounded-xl flex items-center gap-4">
+                                <label className="text-slate-600 font-semibold text-sm whitespace-nowrap">
                                     Self Rating:
                                 </label>
                                 <input
@@ -304,55 +283,36 @@ const AssessmentRunner = () => {
                                     onChange={(e) => handleRatingChange(q.id, e.target.value)}
                                     disabled={isSubmitted}
                                     placeholder={`0-${q.max_score || 10}`}
-                                    style={{
-                                        width: '80px',
-                                        padding: '0.5rem',
-                                        borderRadius: '6px',
-                                        border: (showValidationErrors && (ratings[q.id] === undefined || ratings[q.id] === ''))
-                                            ? '1px solid #ef4444'
-                                            : '1px solid #cbd5e1',
-                                        fontSize: '1rem',
-                                        textAlign: 'center',
-                                        backgroundColor: isSubmitted ? '#e2e8f0' : 'white'
-                                    }}
+                                    className={`w-20 px-3 py-2 bg-violet-50 border rounded-lg text-center font-bold ${(showValidationErrors && (ratings[q.id] === undefined || ratings[q.id] === ''))
+                                            ? 'border-red-400 bg-red-50'
+                                            : 'border-violet-200'
+                                        } ${isSubmitted ? 'bg-slate-100 cursor-not-allowed' : ''}`}
                                 />
-                                <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>/ {q.max_score || 10}</span>
+                                <span className="text-slate-400 text-sm">/ {q.max_score || 10}</span>
                                 {showValidationErrors && (ratings[q.id] === undefined || ratings[q.id] === '') && (
-                                    <span style={{ color: '#ef4444', fontSize: '0.8rem', marginLeft: '0.5rem' }}>Required</span>
+                                    <span className="text-red-500 text-xs font-medium">Required</span>
                                 )}
                             </div>
                         </div>
                     ))}
 
                     {/* Total Self-Rating Score */}
-                    <div style={{
-                        marginTop: '2rem',
-                        padding: '1.5rem',
-                        background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                        borderRadius: '12px',
-                        border: '1px solid #bae6fd',
-                        textAlign: 'center'
-                    }}>
-                        <p style={{ margin: 0, color: '#0369a1', fontWeight: '600', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
+                    <div className="bg-gradient-to-r from-violet-100 to-purple-100 border border-violet-200 rounded-2xl p-6 text-center">
+                        <p className="text-violet-700 font-semibold text-sm mb-2">
                             Your Total Self-Rating
                         </p>
-                        <p style={{ margin: 0, fontSize: '2rem', fontWeight: '700', color: '#0284c7' }}>
-                            {totalRating.toFixed(1)} <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: '400' }}>/ {maxTotalRating}</span>
+                        <p className="text-3xl font-bold text-violet-600">
+                            {totalRating.toFixed(1)}
+                            <span className="text-lg text-violet-400 font-normal ml-2">/ {maxTotalRating}</span>
                         </p>
                     </div>
 
-                    <div className="form-actions" style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                    {/* Form Actions */}
+                    <div className="flex justify-end gap-4 pt-6 border-t border-violet-100">
                         <button
                             type="button"
                             onClick={() => navigate('/dashboard')}
-                            className="auth-button"
-                            style={{
-                                background: 'white',
-                                color: '#64748b',
-                                border: '1px solid #cbd5e1',
-                                width: 'auto',
-                                padding: '0.75rem 1.5rem'
-                            }}
+                            className="px-6 py-3 bg-white border border-violet-200 text-slate-600 font-bold rounded-xl hover:bg-violet-50 transition"
                         >
                             {isSubmitted ? 'Back to Dashboard' : 'Cancel'}
                         </button>
@@ -360,22 +320,26 @@ const AssessmentRunner = () => {
                         {!isSubmitted && (
                             <button
                                 type="submit"
-                                className="auth-button"
                                 disabled={submitting}
-                                style={{
-                                    background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-                                    border: 'none',
-                                    width: 'auto',
-                                    padding: '0.75rem 2rem'
-                                }}
+                                className="px-8 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold rounded-xl shadow-lg shadow-violet-500/30 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50"
                             >
-                                {submitting ? 'Submitting...' : (assessment.is_submitted ? 'Update Submission' : 'Submit Assessment')}
+                                {submitting ? (
+                                    <span className="flex items-center gap-2">
+                                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                        Submitting...
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-2">
+                                        <Save size={18} />
+                                        {assessment.is_submitted ? 'Update Submission' : 'Submit Assessment'}
+                                    </span>
+                                )}
                             </button>
                         )}
                     </div>
                 </form>
             </div>
-        </div>
+        </DashboardLayout>
     );
 };
 

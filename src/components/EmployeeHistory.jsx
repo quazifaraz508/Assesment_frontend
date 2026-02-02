@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
-import { ArrowLeft } from 'lucide-react';
+import DashboardLayout from './DashboardLayout';
+import { FileText, Eye, Edit } from 'lucide-react';
 
 const EmployeeHistory = () => {
     const { employeeId } = useParams();
@@ -28,116 +29,114 @@ const EmployeeHistory = () => {
         }
     }, [employeeId]);
 
-    if (loading) return <div className="loading-state">Loading history...</div>;
-    if (!employee) return <div className="error-state">Employee not found.</div>;
+    if (loading) {
+        return (
+            <DashboardLayout title="Assessment History" subtitle="Loading...">
+                <div className="flex items-center justify-center h-64">
+                    <div className="w-12 h-12 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
+    if (!employee) {
+        return (
+            <DashboardLayout title="Assessment History" subtitle="Employee not found">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center text-red-600">
+                    Employee not found.
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     return (
-        <div className="employee-history-page" style={{ padding: '2rem', background: '#f8fafc', minHeight: '100vh' }}>
-            <div className="container" style={{ maxWidth: '1000px', margin: '0 auto' }}>
-                <button
-                    onClick={() => navigate('/dashboard')}
-                    style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        color: '#64748b',
-                        marginBottom: '1rem',
-                        fontSize: '0.9rem',
-                        fontWeight: '500'
-                    }}
-                >
-                    <ArrowLeft size={18} /> Back to Dashboard
-                </button>
-
-                <header style={{ marginBottom: '2rem' }}>
-                    <h1 style={{ fontSize: '1.75rem', color: '#1e293b', marginBottom: '0.5rem' }}>Assessment History</h1>
-                    <div style={{ color: '#64748b' }}>
-                        <span style={{ fontWeight: '600', color: '#334155' }}>{employee.name}</span> • {employee.email} • {employee.department}
+        <DashboardLayout
+            title={`${employee.name}'s History`}
+            subtitle={`${employee.email} • ${employee.department}`}
+        >
+            {/* Employee Info Card */}
+            <div className="bg-gradient-to-r from-violet-600 to-purple-600 rounded-2xl p-6 text-white mb-6 shadow-xl shadow-violet-500/20">
+                <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+                        {employee.name.charAt(0)}
                     </div>
-                </header>
-
-                <div className="history-table-container" style={{ background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px 0 rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                        <thead style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
-                            <tr>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>Assessment Title</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>Status</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>Submitted On</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>Due Date</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem', color: '#64748b', fontWeight: '600', textAlign: 'right' }}>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {history.length > 0 ? history.map((item, idx) => (
-                                <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                    <td style={{ padding: '1rem', color: '#334155', fontWeight: '500' }}>{item.assessment_title}</td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
-                                            <span style={{
-                                                fontSize: '0.75rem',
-                                                fontWeight: '600',
-                                                padding: '0.25rem 0.75rem',
-                                                borderRadius: '999px',
-                                                background: item.status === 'Submitted' ? '#e0f2fe' : (item.status === 'Expired' ? '#fee2e2' : '#fef3c7'),
-                                                color: item.status === 'Submitted' ? '#0369a1' : (item.status === 'Expired' ? '#b91c1c' : '#b45309')
-                                            }}>
-                                                {item.status}
-                                            </span>
-
-                                            {item.status === 'Submitted' && (
-                                                <span style={{
-                                                    fontSize: '0.75rem',
-                                                    fontWeight: '600',
-                                                    padding: '0.25rem 0.75rem',
-                                                    borderRadius: '999px',
-                                                    background: item.is_reviewed ? '#dcfce7' : '#ffedd5',
-                                                    color: item.is_reviewed ? '#166534' : '#c2410c'
-                                                }}>
-                                                    {item.is_reviewed ? 'Reviewed' : 'Pending Review'}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
-                                        {item.submitted_at ? new Date(item.submitted_at).toLocaleString() : '-'}
-                                    </td>
-                                    <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
-                                        {new Date(item.end_date).toLocaleDateString()}
-                                    </td>
-                                    <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                        {item.status === 'Submitted' && item.submission_id && (
-                                            <button
-                                                onClick={() => navigate(`/review-submission/${item.submission_id}`)}
-                                                style={{
-                                                    background: 'white',
-                                                    color: '#0ea5e9',
-                                                    border: '1px solid #0ea5e9',
-                                                    padding: '0.4rem 0.8rem',
-                                                    borderRadius: '6px',
-                                                    fontSize: '0.85rem',
-                                                    cursor: 'pointer',
-                                                    fontWeight: '500',
-                                                    transition: 'all 0.2s'
-                                                }}
-                                            >
-                                                {item.is_reviewed ? 'Edit' : 'Review'}
-                                            </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No assessment history found.</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                    <div>
+                        <h2 className="text-xl font-bold">{employee.name}</h2>
+                        <p className="text-violet-100">{employee.email}</p>
+                        <span className="inline-block mt-2 px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
+                            {employee.department}
+                        </span>
+                    </div>
                 </div>
             </div>
-        </div>
+
+            {/* History Table */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-violet-100 shadow-lg shadow-violet-100/50 overflow-hidden">
+                <table className="w-full text-left">
+                    <thead className="bg-gradient-to-r from-violet-50 to-purple-50 border-b border-violet-100">
+                        <tr>
+                            <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider">Assessment Title</th>
+                            <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider">Submitted On</th>
+                            <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider">Due Date</th>
+                            <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-violet-50">
+                        {history.length > 0 ? history.map((item, idx) => (
+                            <tr key={idx} className="hover:bg-violet-50/50 transition-colors">
+                                <td className="px-6 py-4">
+                                    <span className="font-semibold text-slate-800">{item.assessment_title}</span>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex flex-col gap-2">
+                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${item.status === 'Submitted'
+                                                ? 'bg-sky-100 text-sky-700'
+                                                : item.status === 'Expired'
+                                                    ? 'bg-red-100 text-red-700'
+                                                    : 'bg-amber-100 text-amber-700'
+                                            }`}>
+                                            {item.status}
+                                        </span>
+
+                                        {item.status === 'Submitted' && (
+                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${item.is_reviewed ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'
+                                                }`}>
+                                                {item.is_reviewed ? 'Reviewed' : 'Pending Review'}
+                                            </span>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-slate-500 text-sm">
+                                    {item.submitted_at ? new Date(item.submitted_at).toLocaleString() : '-'}
+                                </td>
+                                <td className="px-6 py-4 text-slate-500 text-sm">
+                                    {new Date(item.end_date).toLocaleDateString()}
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    {item.status === 'Submitted' && item.submission_id && (
+                                        <button
+                                            onClick={() => navigate(`/review-submission/${item.submission_id}`)}
+                                            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-violet-200 text-violet-600 text-xs font-bold rounded-lg hover:bg-violet-50 hover:border-violet-300 transition-all"
+                                        >
+                                            {item.is_reviewed ? <Edit size={14} /> : <Eye size={14} />}
+                                            {item.is_reviewed ? 'Edit' : 'Review'}
+                                        </button>
+                                    )}
+                                </td>
+                            </tr>
+                        )) : (
+                            <tr>
+                                <td colSpan="5" className="px-6 py-12 text-center text-slate-400">
+                                    <FileText size={48} className="mx-auto mb-4 opacity-20" />
+                                    <p>No assessment history found.</p>
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </DashboardLayout>
     );
 };
 

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
-import { Slack, Plus, Trash2, Save, Send, Link as LinkIcon, AlertCircle, CheckCircle2 } from 'lucide-react';
+import DashboardLayout from './DashboardLayout';
+import { Slack, Plus, Trash2, Send, Link as LinkIcon, AlertCircle, CheckCircle2 } from 'lucide-react';
 
-const AdminSlackSettings = () => {
+const AdminSlackSettings = ({ embedded = false }) => {
     const [settings, setSettings] = useState({
         enable_slack_notifications: false,
         slack_reminder_intervals: '60',
@@ -120,209 +120,217 @@ const AdminSlackSettings = () => {
     };
 
     if (loading) {
-        return (
-            <div className="flex justify-center items-center min-h-[400px]">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        const loadingContent = (
+            <div className="flex items-center justify-center h-64">
+                <div className="w-12 h-12 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
             </div>
+        );
+        if (embedded) return loadingContent;
+        return (
+            <DashboardLayout title="Slack Integration" subtitle="Manage automated Slack notifications">
+                {loadingContent}
+            </DashboardLayout>
         );
     }
 
-    return (
-        <div className="container mx-auto px-4 py-8 max-w-5xl">
+    const content = (
+        <>
             {/* Status Messages */}
             {message.text && (
-                <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-3 transition-all transform animate-in slide-in-from-top-1 px-6 ${message.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+                <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-xl shadow-xl flex items-center gap-3 transition-all animate-pulse ${message.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
                     }`}>
-                    {message.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-                    <span className="font-medium">{message.text}</span>
+                    {message.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                    <span className="font-semibold">{message.text}</span>
                 </div>
             )}
 
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8 border border-gray-100">
-                {/* Header */}
-                <div className="bg-gradient-to-r from-slate-800 to-indigo-900 px-8 py-10 text-white">
+            <div className="space-y-6">
+                {/* Header Card */}
+                <div className="bg-gradient-to-r from-violet-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl shadow-violet-500/20">
                     <div className="flex items-center gap-4 mb-3">
-                        <div className="p-3 bg-white/10 rounded-xl backdrop-blur-md">
-                            <Slack className="w-8 h-8" />
+                        <div className="p-3 bg-white/20 rounded-xl backdrop-blur-md">
+                            <Slack size={32} />
                         </div>
-                        <h1 className="text-3xl font-bold tracking-tight">Slack Integration</h1>
+                        <div>
+                            <h2 className="text-2xl font-bold">Slack Integration</h2>
+                            <p className="text-violet-100/80">Send direct messages to users and post updates to channels</p>
+                        </div>
                     </div>
-                    <p className="text-indigo-100/80 max-w-2xl">
-                        Manage automated notifications for assessments. Send direct messages to users and post updates to specific channels via webhooks.
-                    </p>
                 </div>
 
-                <div className="p-8 space-y-12">
-                    {/* Global Toggle */}
-                    <section className="bg-slate-50 rounded-2xl p-6 border border-slate-200">
-                        <div className="flex items-center justify-between gap-8">
-                            <div>
-                                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                    <Send className="w-5 h-5 text-indigo-600" />
-                                    Global Slack Notifications
-                                </h3>
-                                <p className="text-slate-500 text-sm mt-1">
-                                    When enabled, users with registered Slack accounts will receive direct messages when a new assessment is assigned.
-                                </p>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer scale-110">
-                                <input
-                                    type="checkbox"
-                                    checked={settings.enable_slack_notifications}
-                                    onChange={handleToggleNotifications}
-                                    disabled={savingSettings}
-                                    className="sr-only peer"
-                                />
-                                <div className="w-14 h-7 bg-slate-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[4px] after:bg-white after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-600"></div>
-                            </label>
+                {/* Global Toggle */}
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-violet-100 shadow-lg shadow-violet-100/50 p-6">
+                    <div className="flex items-center justify-between gap-8">
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <Send size={20} className="text-violet-600" />
+                                Global Slack Notifications
+                            </h3>
+                            <p className="text-slate-500 text-sm mt-1">
+                                Users with registered Slack accounts will receive direct messages when a new assessment is assigned.
+                            </p>
                         </div>
-                    </section>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={settings.enable_slack_notifications}
+                                onChange={handleToggleNotifications}
+                                disabled={savingSettings}
+                                className="sr-only peer"
+                            />
+                            <div className="w-14 h-7 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-1 after:bg-white after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-violet-600 shadow-inner"></div>
+                        </label>
+                    </div>
+                </div>
 
-                    {/* Reminder Schedule */}
-                    <section className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                            <div className="flex-1">
-                                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                    <AlertCircle className="w-5 h-5 text-indigo-600" />
-                                    Reminder Schedule
-                                </h3>
-                                <p className="text-slate-500 text-sm mt-1">
-                                    Configure when users should receive direct messages before an assessment deadline.
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <input
-                                    type="number"
-                                    placeholder="Minutes"
-                                    value={newInterval}
-                                    onChange={(e) => setNewInterval(e.target.value)}
-                                    className="w-24 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                />
+                {/* Reminder Schedule */}
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-violet-100 shadow-lg shadow-violet-100/50 p-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex-1">
+                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <AlertCircle size={20} className="text-violet-600" />
+                                Reminder Schedule
+                            </h3>
+                            <p className="text-slate-500 text-sm mt-1">
+                                Configure when users should receive direct messages before an assessment deadline.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="number"
+                                placeholder="Minutes"
+                                value={newInterval}
+                                onChange={(e) => setNewInterval(e.target.value)}
+                                className="w-24 px-3 py-2 bg-white border border-violet-200 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none"
+                            />
+                            <button
+                                onClick={handleAddInterval}
+                                disabled={savingSettings || !newInterval}
+                                className="p-2.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50"
+                            >
+                                <Plus size={20} />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 flex flex-wrap gap-3">
+                        {settings.slack_reminder_intervals.split(',').filter(i => i.trim()).map((interval) => (
+                            <div key={interval} className="flex items-center gap-2 px-4 py-2 bg-violet-50 text-violet-700 border border-violet-200 rounded-full font-bold group hover:bg-violet-100 transition-colors">
+                                <span>{interval} mins before</span>
                                 <button
-                                    onClick={handleAddInterval}
-                                    disabled={savingSettings || !newInterval}
-                                    className="p-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all disabled:opacity-50 shadow-md shadow-indigo-100"
+                                    onClick={() => handleRemoveInterval(interval)}
+                                    className="text-violet-400 hover:text-red-500 transition-colors"
                                 >
-                                    <Plus className="w-5 h-5" />
+                                    <Trash2 size={16} />
                                 </button>
                             </div>
+                        ))}
+                        {settings.slack_reminder_intervals.split(',').filter(i => i.trim()).length === 0 && (
+                            <p className="text-slate-400 italic text-sm">No reminders scheduled.</p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Webhook Management */}
+                <div className="space-y-6">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <LinkIcon size={20} className="text-violet-600" />
+                            Channel Webhooks
+                        </h3>
+                        <p className="text-slate-500 text-sm mt-1">Assessment updates will be broadcasted to all channels listed below.</p>
+                    </div>
+
+                    {/* Add Webhook Form */}
+                    <form onSubmit={handleAddWebhook} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-6 bg-violet-50/50 border border-violet-100 rounded-2xl">
+                        <div className="md:col-span-4 space-y-1.5">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Channel Name</label>
+                            <input
+                                type="text"
+                                placeholder="#general-updates"
+                                value={newWebhook.name}
+                                onChange={(e) => setNewWebhook({ ...newWebhook, name: e.target.value })}
+                                className="w-full px-4 py-2.5 bg-white border border-violet-200 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none"
+                            />
                         </div>
-
-                        <div className="mt-6 flex flex-wrap gap-3">
-                            {settings.slack_reminder_intervals.split(',').filter(i => i.trim()).map((interval) => (
-                                <div key={interval} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-full font-bold group hover:bg-indigo-100 transition-colors">
-                                    <span>{interval} mins before</span>
-                                    <button
-                                        onClick={() => handleRemoveInterval(interval)}
-                                        className="text-indigo-400 hover:text-red-500 transition-colors"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            ))}
-                            {settings.slack_reminder_intervals.split(',').filter(i => i.trim()).length === 0 && (
-                                <p className="text-slate-400 italic text-sm">No reminders scheduled.</p>
-                            )}
+                        <div className="md:col-span-6 space-y-1.5">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Webhook URL</label>
+                            <input
+                                type="url"
+                                required
+                                placeholder="https://hooks.slack.com/services/..."
+                                value={newWebhook.url}
+                                onChange={(e) => setNewWebhook({ ...newWebhook, url: e.target.value })}
+                                className="w-full px-4 py-2.5 bg-white border border-violet-200 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none"
+                            />
                         </div>
-                    </section>
-
-                    {/* Webhook Management */}
-                    <section className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                    <LinkIcon className="w-6 h-6 text-indigo-600" />
-                                    Channel Webhooks
-                                </h3>
-                                <p className="text-slate-500 text-sm mt-1 font-medium">
-                                    Assessment updates will be broadcasted to all channels listed below.
-                                </p>
-                            </div>
+                        <div className="md:col-span-2 flex items-end">
+                            <button
+                                type="submit"
+                                disabled={addingWebhook}
+                                className="w-full h-[46px] flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold rounded-xl hover:shadow-lg transition shadow-lg shadow-violet-200 disabled:opacity-70"
+                            >
+                                {addingWebhook ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : <Plus size={20} />}
+                                <span>Add</span>
+                            </button>
                         </div>
+                    </form>
 
-                        {/* Add Webhook Form */}
-                        <form onSubmit={handleAddWebhook} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-6 bg-indigo-50/50 border border-indigo-100 rounded-2xl">
-                            <div className="md:col-span-4 space-y-1.5">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Channel Name</label>
-                                <input
-                                    type="text"
-                                    placeholder="#general-updates"
-                                    value={newWebhook.name}
-                                    onChange={(e) => setNewWebhook({ ...newWebhook, name: e.target.value })}
-                                    className="w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition placeholder-slate-400"
-                                />
-                            </div>
-                            <div className="md:col-span-6 space-y-1.5">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Webhook URL</label>
-                                <input
-                                    type="url"
-                                    required
-                                    placeholder="https://hooks.slack.com/services/..."
-                                    value={newWebhook.url}
-                                    onChange={(e) => setNewWebhook({ ...newWebhook, url: e.target.value })}
-                                    className="w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition placeholder-slate-400"
-                                />
-                            </div>
-                            <div className="md:col-span-2 flex items-end">
-                                <button
-                                    type="submit"
-                                    disabled={addingWebhook}
-                                    className="w-full h-[46px] flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 disabled:opacity-70"
-                                >
-                                    {addingWebhook ? <span className="animate-spin h-5 w-5 border-b-2 border-white rounded-full"></span> : <Plus className="w-5 h-5" />}
-                                    <span>Add</span>
-                                </button>
-                            </div>
-                        </form>
-
-                        {/* Webhooks Table */}
-                        <div className="overflow-hidden bg-white border border-slate-200 rounded-2xl shadow-sm">
-                            <table className="w-full text-left">
-                                <thead className="bg-slate-50 border-b border-slate-200">
-                                    <tr>
-                                        <th className="px-6 py-4 text-sm font-bold text-slate-600">Channel / Name</th>
-                                        <th className="px-6 py-4 text-sm font-bold text-slate-600">Webhook URL</th>
-                                        <th className="px-6 py-4 text-sm font-bold text-slate-600 text-right pr-10">Actions</th>
+                    {/* Webhooks Table */}
+                    <div className="overflow-hidden bg-white/80 backdrop-blur-sm border border-violet-100 rounded-2xl shadow-lg shadow-violet-100/50">
+                        <table className="w-full text-left">
+                            <thead className="bg-gradient-to-r from-violet-50 to-purple-50 border-b border-violet-100">
+                                <tr>
+                                    <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider">Channel / Name</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider">Webhook URL</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-violet-600 uppercase tracking-wider text-right pr-10">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-violet-50">
+                                {webhooks.map((webhook) => (
+                                    <tr key={webhook.id} className="hover:bg-violet-50/50 transition group">
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold text-slate-800">{webhook.name || 'Unnamed Channel'}</div>
+                                            <div className="text-xs text-slate-400 mt-0.5">Added {new Date(webhook.created_at).toLocaleDateString()}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-slate-500 font-mono truncate max-w-xs">{webhook.url}</div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right pr-6">
+                                            <button
+                                                onClick={() => handleDeleteWebhook(webhook.id)}
+                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition opacity-0 group-hover:opacity-100"
+                                                title="Delete Webhook"
+                                            >
+                                                <Trash2 size={20} />
+                                            </button>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {webhooks.map((webhook) => (
-                                        <tr key={webhook.id} className="hover:bg-slate-50/50 transition duration-150 group">
-                                            <td className="px-6 py-4">
-                                                <div className="font-bold text-slate-800">{webhook.name || 'Unnamed Channel'}</div>
-                                                <div className="text-[11px] text-slate-400 mt-0.5">Added {new Date(webhook.created_at).toLocaleDateString()}</div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-sm text-slate-500 font-mono truncate max-w-xs">{webhook.url}</div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right pr-6">
-                                                <button
-                                                    onClick={() => handleDeleteWebhook(webhook.id)}
-                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition duration-200 opacity-0 group-hover:opacity-100"
-                                                    title="Delete Webhook"
-                                                >
-                                                    <Trash2 className="w-5 h-5" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {webhooks.length === 0 && (
-                                        <tr>
-                                            <td colSpan="3" className="px-6 py-12 text-center text-slate-400 italic">
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <AlertCircle className="w-8 h-8 opacity-20" />
-                                                    <p>No webhooks configured yet. Assessment alerts will only be sent via direct messages.</p>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
+                                ))}
+                                {webhooks.length === 0 && (
+                                    <tr>
+                                        <td colSpan="3" className="px-6 py-12 text-center text-slate-400 italic">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <AlertCircle size={32} className="opacity-20" />
+                                                <p>No webhooks configured yet. Assessment alerts will only be sent via direct messages.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
+    );
+
+    if (embedded) return content;
+
+    return (
+        <DashboardLayout title="Slack Integration" subtitle="Manage automated notifications for assessments">
+            {content}
+        </DashboardLayout>
     );
 };
 

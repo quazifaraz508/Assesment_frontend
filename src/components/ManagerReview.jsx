@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
+import DashboardLayout from './DashboardLayout';
 import CustomPopup from './CustomPopup';
 import { Save, AlertCircle, CheckCircle, ArrowLeft, Star, MessageSquare, Trash2 } from 'lucide-react';
-import '../styles/Auth.css';
 
 const ManagerReview = () => {
     const { submissionId } = useParams();
@@ -365,14 +365,36 @@ const ManagerReview = () => {
     const displayManagerScore = Math.max(0, managerScore + totalDeduction);
     const displayAdminScore = Math.max(0, adminScore + totalDeduction);
 
-    if (loading) return <div className="loading-state">Loading submission...</div>;
-    if (error) return <div className="error-state">{error}</div>;
+    if (loading) {
+        return (
+            <DashboardLayout title="Review Submission" subtitle="Loading...">
+                <div className="flex items-center justify-center h-64">
+                    <div className="w-12 h-12 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
+    if (error) {
+        return (
+            <DashboardLayout title="Review Submission" subtitle="Error">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center text-red-600">
+                    <AlertCircle size={48} className="mx-auto mb-4 opacity-50" />
+                    {error}
+                </div>
+            </DashboardLayout>
+        );
+    }
+
     if (!submission) return null;
 
     return (
-        <div className="manager-review-page" style={{ background: '#f8fafc', minHeight: '100vh', padding: '2rem' }}>
+        <DashboardLayout
+            title={`Review: ${submission.assessment_title}`}
+            subtitle={`Reviewing submission by ${submission.employee_name}`}
+        >
             <CustomPopup {...popup} onClose={closePopup} />
-            <div className="review-container" style={{ maxWidth: '900px', margin: '0 auto', background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-violet-100 shadow-lg shadow-violet-100/50 overflow-hidden">
 
                 <header style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0', background: 'white' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.5rem' }}>
@@ -801,8 +823,8 @@ const ManagerReview = () => {
                         </div>
                     </div>
                 </form>
-            </div >
-        </div >
+            </div>
+        </DashboardLayout>
     );
 };
 

@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import ProfileMenu from './ProfileMenu';
+import DashboardLayout from './DashboardLayout';
 import CustomPopup from './CustomPopup';
-import { Edit, Eye, X, Trash2 } from 'lucide-react';
-import '../styles/Auth.css';
+import { Edit, Eye, X, Trash2, Plus } from 'lucide-react';
 
 const DEPARTMENTS = ['Technical', 'Content', 'Youtube', 'Calling'];
 
-const AdminAssessments = () => {
+const AdminAssessments = ({ embedded = false }) => {
     const { user } = useAuth();
     const [assessments, setAssessments] = useState([]);
     const [templates, setTemplates] = useState([]);
@@ -332,338 +331,332 @@ const AdminAssessments = () => {
         }
     };
 
-    return (
-        <div className="dashboard-container">
+    const content = (
+        <>
             <CustomPopup {...popup} onClose={closePopup} />
-            <header className="dashboard-header">
-                <div className="header-content">
-                    <h1>Manage Assessments</h1>
-                    <div className="header-actions">
-                        <button
-                            onClick={openCreateTemplate}
-                            className="auth-button"
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', width: 'auto' }}
-                        >
-                            + New Template
-                        </button>
-                        <ProfileMenu />
-                    </div>
-                </div>
-            </header>
 
-            <main className="dashboard-main">
-                {/* Template Modal */}
-                {showTemplateModal && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                        backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
-                    }}>
-                        <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
-                            <h2>{editingTemplate ? 'Edit Template' : 'Create Template'}</h2>
-                            <form onSubmit={handleTemplateSave}>
-                                <div className="form-group">
-                                    <label>Template Title</label>
-                                    <input
-                                        type="text"
-                                        value={templateForm.title}
-                                        onChange={(e) => setTemplateForm({ ...templateForm, title: e.target.value })}
-                                        required
-                                        placeholder="e.g. Technical Interview V1"
-                                    />
-                                </div>
+            {/* Action Button */}
+            <div className="flex justify-end mb-6">
+                <button
+                    onClick={openCreateTemplate}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-violet-500/30 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                >
+                    <Plus size={18} />
+                    New Template
+                </button>
+            </div>
 
-                                <h3>Questions</h3>
-                                {templateForm.questions.map((q, idx) => (
-                                    <div key={idx} style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', border: '1px solid #e2e8f0' }}>
-                                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                            <input
-                                                type="text"
-                                                value={q.text}
-                                                onChange={(e) => handleQuestionChange(idx, 'text', e.target.value)}
-                                                placeholder="Question Text"
-                                                required
-                                                style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                                            />
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                <label style={{ fontSize: '0.75rem', color: '#64748b' }}>Score:</label>
-                                                <input
-                                                    type="number"
-                                                    value={q.max_score || 10}
-                                                    onChange={(e) => handleQuestionChange(idx, 'max_score', parseInt(e.target.value) || 0)}
-                                                    style={{ width: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                                                    min="0"
-                                                />
-                                            </div>
-                                            <button type="button" onClick={() => removeQuestion(idx)} style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '0 0.5rem', cursor: 'pointer' }}>X</button>
-                                        </div>
-                                    </div>
-                                ))}
-                                <button type="button" onClick={addQuestion} style={{ marginBottom: '1rem', color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600' }}>+ Add Question</button>
-
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                    <button type="button" onClick={() => setShowTemplateModal(false)} className="auth-button" style={{ background: '#94a3b8' }}>Cancel</button>
-                                    <button type="submit" className="auth-button">Save Template</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
-
-                <div className="auth-card" style={{ maxWidth: '800px', margin: '0 auto 2rem' }}>
-                    <h2>Create New Assessment</h2>
-                    <form onSubmit={handleSubmit} className="auth-form">
-
-                        <div className="form-group">
-                            <label>Select Template</label>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <select
-                                    name="selectedTemplate"
-                                    value={formData.selectedTemplate}
-                                    onChange={handleTemplateChange}
+            {/* Template Modal */}
+            {showTemplateModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+                }}>
+                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <h2>{editingTemplate ? 'Edit Template' : 'Create Template'}</h2>
+                        <form onSubmit={handleTemplateSave}>
+                            <div className="form-group">
+                                <label>Template Title</label>
+                                <input
+                                    type="text"
+                                    value={templateForm.title}
+                                    onChange={(e) => setTemplateForm({ ...templateForm, title: e.target.value })}
                                     required
-                                    style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
-                                >
-                                    <option value="">-- Choose a Template --</option>
-                                    {templates.map(tpl => (
-                                        <option key={tpl.id} value={tpl.id}>{tpl.title}</option>
-                                    ))}
-                                </select>
-                                {formData.selectedTemplate && (
-                                    <button
-                                        type="button"
-                                        onClick={() => openEditTemplate(templates.find(t => t.id.toString() === formData.selectedTemplate.toString()))}
-                                        style={{ padding: '0 1rem', background: '#3b82f6', color: 'white', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
-                                    >
-                                        Edit
-                                    </button>
-                                )}
+                                    placeholder="e.g. Technical Interview V1"
+                                />
                             </div>
-                            <div style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
-                                <span style={{ color: '#64748b' }}>Or </span>
-                                <button type="button" onClick={openCreateTemplate} style={{ background: 'none', border: 'none', color: '#6366f1', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>create a new template</button>
-                            </div>
-                        </div>
 
-                        <div className="form-group">
-                            <label>Assessment Title</label>
-                            <input
-                                type="text"
-                                name="title"
-                                value={formData.title}
-                                onChange={handleChange}
-                                required
-                                placeholder="Assessment Name"
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label>Departments</label>
-                            <div className="checkbox-group" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-                                {DEPARTMENTS.map(dept => (
-                                    <label key={dept} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                            <h3>Questions</h3>
+                            {templateForm.questions.map((q, idx) => (
+                                <div key={idx} style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
                                         <input
-                                            type="checkbox"
-                                            checked={formData.departments.includes(dept)}
-                                            onChange={() => handleDepartmentChange(dept)}
+                                            type="text"
+                                            value={q.text}
+                                            onChange={(e) => handleQuestionChange(idx, 'text', e.target.value)}
+                                            placeholder="Question Text"
+                                            required
+                                            style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                                         />
-                                        {dept}
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Start Date</label>
-                                <input
-                                    type="datetime-local"
-                                    name="start_date"
-                                    value={formData.start_date}
-                                    onChange={handleChange}
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>End Date</label>
-                                <input
-                                    type="datetime-local"
-                                    name="end_date"
-                                    value={formData.end_date}
-                                    onChange={handleChange}
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <button type="submit" className="auth-button">Create Assessment</button>
-                    </form>
-                </div>
-
-                <div className="assessments-list" style={{ maxWidth: '800px', margin: '0 auto' }}>
-                    <h3>Existing Assessments</h3>
-                    {loading ? <p>Loading...</p> : (
-                        <>
-                            <div className="assessment-grid" style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
-                                {assessments.length === 0 ? <p>No assessments found.</p> : (showAllAssessments ? assessments : assessments.slice(0, 5)).map(item => {
-                                    const now = new Date();
-                                    const start = new Date(item.start_date);
-                                    const end = new Date(item.end_date);
-                                    let status = 'upcoming';
-                                    let statusColor = '#f59e0b';
-                                    let statusText = 'Upcoming';
-
-                                    if (now >= start && now <= end) {
-                                        status = 'live';
-                                        statusColor = '#10b981';
-                                        statusText = 'Live Now';
-                                    } else if (now > end) {
-                                        status = 'ended';
-                                        statusColor = '#64748b';
-                                        statusText = 'Ended';
-                                    }
-
-                                    return (
-                                        <div key={item.id} className="assessment-card" style={{
-                                            background: 'white',
-                                            padding: '1.25rem',
-                                            borderRadius: '12px',
-                                            border: `1px solid ${status === 'live' ? '#a7f3d0' : '#e2e8f0'}`,
-                                            boxShadow: status === 'live' ? '0 4px 6px -1px rgba(16, 185, 129, 0.1), 0 2px 4px -1px rgba(16, 185, 129, 0.06)' : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'start',
-                                            position: 'relative',
-                                            overflow: 'hidden'
-                                        }}>
-                                            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', backgroundColor: statusColor }} />
-
-                                            <div style={{ paddingLeft: '0.75rem', flex: 1 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-                                                    <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b' }}>{item.title}</h4>
-                                                    <span style={{
-                                                        fontSize: '0.7rem',
-                                                        fontWeight: '600',
-                                                        color: statusColor,
-                                                        backgroundColor: `${statusColor}15`,
-                                                        padding: '0.15rem 0.5rem',
-                                                        borderRadius: '999px',
-                                                        textTransform: 'uppercase',
-                                                        letterSpacing: '0.05em'
-                                                    }}>
-                                                        {statusText}
-                                                    </span>
-                                                </div>
-
-                                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                                                    {item.departments && item.departments.map(d => (
-                                                        <span key={d} style={{ fontSize: '0.75rem', background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '4px', fontWeight: '500' }}>
-                                                            {d}
-                                                        </span>
-                                                    ))}
-                                                </div>
-
-                                                <div style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#64748b' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                                                        <span style={{ fontWeight: '500' }}>Schedule:</span>
-                                                        <span>{start.toLocaleString()} — {end.toLocaleString()}</span>
-                                                    </div>
-                                                    <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                                                        Created: {new Date(item.created_at).toLocaleDateString()}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                                                <span style={{ fontSize: '0.9rem', color: '#64748b', display: 'block' }}>
-                                                    {item.questions ? item.questions.length : 0} Questions
-                                                </span>
-                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); openViewAssessment(item); }}
-                                                        title="View Assessment"
-                                                        style={{
-                                                            padding: '0.5rem',
-                                                            background: '#e0f2fe',
-                                                            border: 'none',
-                                                            borderRadius: '6px',
-                                                            cursor: 'pointer',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center'
-                                                        }}
-                                                    >
-                                                        <Eye size={16} color="#0284c7" />
-                                                    </button>
-                                                    {(status === 'upcoming' || status === 'live') && (
-                                                        <>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); openEditAssessment(item); }}
-                                                                title="Edit Assessment"
-                                                                style={{
-                                                                    padding: '0.5rem',
-                                                                    background: '#fef3c7',
-                                                                    border: 'none',
-                                                                    borderRadius: '6px',
-                                                                    cursor: 'pointer',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    justifyContent: 'center'
-                                                                }}
-                                                            >
-                                                                <Edit size={16} color="#d97706" />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); handleDeleteAssessment(item); }}
-                                                                title="Delete Assessment"
-                                                                style={{
-                                                                    padding: '0.5rem',
-                                                                    background: '#fee2e2',
-                                                                    border: 'none',
-                                                                    borderRadius: '6px',
-                                                                    cursor: 'pointer',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    justifyContent: 'center'
-                                                                }}
-                                                            >
-                                                                <Trash2 size={16} color="#dc2626" />
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            <label style={{ fontSize: '0.75rem', color: '#64748b' }}>Score:</label>
+                                            <input
+                                                type="number"
+                                                value={q.max_score || 10}
+                                                onChange={(e) => handleQuestionChange(idx, 'max_score', parseInt(e.target.value) || 0)}
+                                                style={{ width: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                                min="0"
+                                            />
                                         </div>
-                                    );
-                                })}
+                                        <button type="button" onClick={() => removeQuestion(idx)} style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '0 0.5rem', cursor: 'pointer' }}>X</button>
+                                    </div>
+                                </div>
+                            ))}
+                            <button type="button" onClick={addQuestion} style={{ marginBottom: '1rem', color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600' }}>+ Add Question</button>
+
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                <button type="button" onClick={() => setShowTemplateModal(false)} className="auth-button" style={{ background: '#94a3b8' }}>Cancel</button>
+                                <button type="submit" className="auth-button">Save Template</button>
                             </div>
-                            {assessments.length > 5 && (
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-violet-100 shadow-lg shadow-violet-100/50 p-6 mb-8">
+                <h2 className="text-lg font-bold text-slate-800 mb-4">Create New Assessment</h2>
+                <form onSubmit={handleSubmit} className="auth-form">
+
+                    <div className="form-group">
+                        <label>Select Template</label>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <select
+                                name="selectedTemplate"
+                                value={formData.selectedTemplate}
+                                onChange={handleTemplateChange}
+                                required
+                                style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                            >
+                                <option value="">-- Choose a Template --</option>
+                                {templates.map(tpl => (
+                                    <option key={tpl.id} value={tpl.id}>{tpl.title}</option>
+                                ))}
+                            </select>
+                            {formData.selectedTemplate && (
                                 <button
-                                    onClick={() => setShowAllAssessments(!showAllAssessments)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '0.5rem',
-                                        width: '100%',
-                                        marginTop: '1rem',
-                                        padding: '0.75rem',
-                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        fontWeight: '600',
-                                        transition: 'all 0.2s ease'
-                                    }}
+                                    type="button"
+                                    onClick={() => openEditTemplate(templates.find(t => t.id.toString() === formData.selectedTemplate.toString()))}
+                                    style={{ padding: '0 1rem', background: '#3b82f6', color: 'white', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
                                 >
-                                    {showAllAssessments ? 'Show Less' : `See All (${assessments.length})`}
-                                    <span style={{ fontSize: '1.1rem' }}>{showAllAssessments ? '↑' : '↓'}</span>
+                                    Edit
                                 </button>
                             )}
-                        </>
-                    )}
-                </div>
-            </main>
+                        </div>
+                        <div style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
+                            <span style={{ color: '#64748b' }}>Or </span>
+                            <button type="button" onClick={openCreateTemplate} style={{ background: 'none', border: 'none', color: '#6366f1', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>create a new template</button>
+                        </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Assessment Title</label>
+                        <input
+                            type="text"
+                            name="title"
+                            value={formData.title}
+                            onChange={handleChange}
+                            required
+                            placeholder="Assessment Name"
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Departments</label>
+                        <div className="checkbox-group" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                            {DEPARTMENTS.map(dept => (
+                                <label key={dept} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.departments.includes(dept)}
+                                        onChange={() => handleDepartmentChange(dept)}
+                                    />
+                                    {dept}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label>Start Date</label>
+                            <input
+                                type="datetime-local"
+                                name="start_date"
+                                value={formData.start_date}
+                                onChange={handleChange}
+                                required
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>End Date</label>
+                            <input
+                                type="datetime-local"
+                                name="end_date"
+                                value={formData.end_date}
+                                onChange={handleChange}
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <button type="submit" className="w-full py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold rounded-xl shadow-lg shadow-violet-500/30 hover:shadow-xl hover:-translate-y-0.5 transition-all">Create Assessment</button>
+                </form>
+            </div>
+
+            <div>
+                <h3 className="text-lg font-bold text-slate-800 mb-4">Existing Assessments</h3>
+                {loading ? <p>Loading...</p> : (
+                    <>
+                        <div className="assessment-grid" style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
+                            {assessments.length === 0 ? <p>No assessments found.</p> : (showAllAssessments ? assessments : assessments.slice(0, 5)).map(item => {
+                                const now = new Date();
+                                const start = new Date(item.start_date);
+                                const end = new Date(item.end_date);
+                                let status = 'upcoming';
+                                let statusColor = '#f59e0b';
+                                let statusText = 'Upcoming';
+
+                                if (now >= start && now <= end) {
+                                    status = 'live';
+                                    statusColor = '#10b981';
+                                    statusText = 'Live Now';
+                                } else if (now > end) {
+                                    status = 'ended';
+                                    statusColor = '#64748b';
+                                    statusText = 'Ended';
+                                }
+
+                                return (
+                                    <div key={item.id} className="assessment-card" style={{
+                                        background: 'white',
+                                        padding: '1.25rem',
+                                        borderRadius: '12px',
+                                        border: `1px solid ${status === 'live' ? '#a7f3d0' : '#e2e8f0'}`,
+                                        boxShadow: status === 'live' ? '0 4px 6px -1px rgba(16, 185, 129, 0.1), 0 2px 4px -1px rgba(16, 185, 129, 0.06)' : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'start',
+                                        position: 'relative',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', backgroundColor: statusColor }} />
+
+                                        <div style={{ paddingLeft: '0.75rem', flex: 1 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                                                <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b' }}>{item.title}</h4>
+                                                <span style={{
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: '600',
+                                                    color: statusColor,
+                                                    backgroundColor: `${statusColor}15`,
+                                                    padding: '0.15rem 0.5rem',
+                                                    borderRadius: '999px',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.05em'
+                                                }}>
+                                                    {statusText}
+                                                </span>
+                                            </div>
+
+                                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                                                {item.departments && item.departments.map(d => (
+                                                    <span key={d} style={{ fontSize: '0.75rem', background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '4px', fontWeight: '500' }}>
+                                                        {d}
+                                                    </span>
+                                                ))}
+                                            </div>
+
+                                            <div style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#64748b' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                                    <span style={{ fontWeight: '500' }}>Schedule:</span>
+                                                    <span>{start.toLocaleString()} — {end.toLocaleString()}</span>
+                                                </div>
+                                                <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                                                    Created: {new Date(item.created_at).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                                            <span style={{ fontSize: '0.9rem', color: '#64748b', display: 'block' }}>
+                                                {item.questions ? item.questions.length : 0} Questions
+                                            </span>
+                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); openViewAssessment(item); }}
+                                                    title="View Assessment"
+                                                    style={{
+                                                        padding: '0.5rem',
+                                                        background: '#e0f2fe',
+                                                        border: 'none',
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center'
+                                                    }}
+                                                >
+                                                    <Eye size={16} color="#0284c7" />
+                                                </button>
+                                                {(status === 'upcoming' || status === 'live') && (
+                                                    <>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); openEditAssessment(item); }}
+                                                            title="Edit Assessment"
+                                                            style={{
+                                                                padding: '0.5rem',
+                                                                background: '#fef3c7',
+                                                                border: 'none',
+                                                                borderRadius: '6px',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center'
+                                                            }}
+                                                        >
+                                                            <Edit size={16} color="#d97706" />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleDeleteAssessment(item); }}
+                                                            title="Delete Assessment"
+                                                            style={{
+                                                                padding: '0.5rem',
+                                                                background: '#fee2e2',
+                                                                border: 'none',
+                                                                borderRadius: '6px',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center'
+                                                            }}
+                                                        >
+                                                            <Trash2 size={16} color="#dc2626" />
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        {assessments.length > 5 && (
+                            <button
+                                onClick={() => setShowAllAssessments(!showAllAssessments)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    width: '100%',
+                                    marginTop: '1rem',
+                                    padding: '0.75rem',
+                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontWeight: '600',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                {showAllAssessments ? 'Show Less' : `See All (${assessments.length})`}
+                                <span style={{ fontSize: '1.1rem' }}>{showAllAssessments ? '↑' : '↓'}</span>
+                            </button>
+                        )}
+                    </>
+                )}
+            </div>
 
             {/* View Assessment Modal */}
             {viewingAssessment && (
@@ -947,7 +940,15 @@ const AdminAssessments = () => {
                     </div>
                 </div>
             )}
-        </div>
+        </>
+    );
+
+    if (embedded) return content;
+
+    return (
+        <DashboardLayout title="Manage Assessments" subtitle="Create and manage assessment templates and schedules">
+            {content}
+        </DashboardLayout>
     );
 };
 

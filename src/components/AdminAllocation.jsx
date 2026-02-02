@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
-import { Link } from 'react-router-dom';
-import ProfileMenu from './ProfileMenu';
+import DashboardLayout from './DashboardLayout';
 import CustomPopup from './CustomPopup';
 import {
     DndContext,
@@ -19,7 +18,6 @@ import {
     useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import '../styles/Auth.css';
 
 // Sortable Item Component
 const SortableItem = ({ id, user, onRemove, highlightManagers = false, hasTeam = false }) => {
@@ -195,7 +193,7 @@ const ManagerContainer = ({ manager, employees, onRemoveManager, onUnassignUser 
     );
 };
 
-const AdminAllocation = () => {
+const AdminAllocation = ({ embedded = false }) => {
     const [availableManagers, setAvailableManagers] = useState([]); // List of all potential managers from API
     const [displayedManagers, setDisplayedManagers] = useState([]); // Managers currently shown as columns
     const [users, setUsers] = useState([]); // All users state for allocation
@@ -396,136 +394,141 @@ const AdminAllocation = () => {
         }
     };
 
-    if (loading) return <div>Loading...</div>;
-
     // Managers that are NOT yet displayed
     const remainingManagers = availableManagers.filter(
         m => !displayedManagers.find(dm => dm.id === m.id)
     );
 
-    return (
-        <div className="allocation-container">
-            <header className="dashboard-header">
-                <div className="header-content">
-                    <h1>Admin Allocation</h1>
-                    <div className="header-actions">
-                        <ProfileMenu />
-                    </div>
+    const content = (
+        <>
+            {loading ? (
+                <div className="flex items-center justify-center h-64">
+                    <div className="text-violet-600 font-semibold">Loading...</div>
                 </div>
-            </header>
-
-            <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-            >
-                <div className="allocation-board">
-                    {/* Unassigned Pool */}
-                    <div className="pool-column">
-                        <h3>Unassigned</h3>
-                        <div className="pool-area">
-                            <SortableContext
-                                id="unassigned-pool"
-                                items={getUnassignedEmployees().map(u => u.id)}
-                                strategy={verticalListSortingStrategy}
-                            >
-                                {getUnassignedEmployees().map(user => {
-                                    // Check if this user manages anyone
-                                    const hasTeam = users.some(u => u.reporting_manager === user.id);
-                                    return (
-                                        <SortableItem
-                                            key={user.id}
-                                            id={user.id}
-                                            user={user}
-                                            highlightManagers={true}
-                                            hasTeam={hasTeam}
-                                        />
-                                    );
-                                })}
-                                {getUnassignedEmployees().length === 0 && (
-                                    <div className="empty-placeholder">All assigned!</div>
-                                )}
-                            </SortableContext>
-                        </div>
-                    </div>
-
-                    {/* Manager Columns */}
-                    <div className="managers-grid">
-                        {displayedManagers.map(manager => (
-                            <ManagerContainer
-                                key={manager.id}
-                                manager={manager}
-                                employees={getEmployeesForManager(manager.id)}
-                                onRemoveManager={handleRemoveManagerColumn}
-                                onUnassignUser={handleUnassignUser}
-                            />
-                        ))}
-
-                        {/* + Add Manager Button/Card */}
-                        <div
-                            className="add-manager-card"
-                            onClick={() => setShowAddManagerModal(true)}
-                        >
-                            <div className="add-icon">+</div>
-                            <span>Add Manager</span>
-                        </div>
-                    </div>
-                </div>
-
-                <DragOverlay>
-                    {activeId ? (
-                        <div className="draggable-item overlay">
-                            Dragging...
-                        </div>
-                    ) : null}
-                </DragOverlay>
-            </DndContext>
-
-            {/* Simple Modal for Selecting Manager */}
-            {showAddManagerModal && (
-                <div className="modal-overlay" onClick={() => setShowAddManagerModal(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
-                        <h3>Select a Reporting Manager to Add</h3>
-                        <div className="manager-selection-list">
-                            {remainingManagers.length === 0 ? (
-                                <p>No more available managers.</p>
-                            ) : (
-                                remainingManagers.map(m => (
-                                    <div
-                                        key={m.id}
-                                        className="manager-option"
-                                        onClick={() => handleAddManager(m)}
+            ) : (
+                <>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <div className="allocation-board">
+                            {/* Unassigned Pool */}
+                            <div className="pool-column">
+                                <h3>Unassigned</h3>
+                                <div className="pool-area">
+                                    <SortableContext
+                                        id="unassigned-pool"
+                                        items={getUnassignedEmployees().map(u => u.id)}
+                                        strategy={verticalListSortingStrategy}
                                     >
-                                        {m.profile_picture ? (
-                                            <img
-                                                src={m.profile_picture.startsWith('http') ? m.profile_picture : `${import.meta.env.VITE_BACKEND_URL}${m.profile_picture}`}
-                                                alt={m.name}
-                                                style={{
-                                                    width: '32px',
-                                                    height: '32px',
-                                                    borderRadius: '50%',
-                                                    objectFit: 'cover',
-                                                    marginRight: '0.75rem'
-                                                }}
-                                            />
-                                        ) : (
-                                            <div className="user-avatar-sm">{m.name.charAt(0)}</div>
+                                        {getUnassignedEmployees().map(user => {
+                                            const hasTeam = users.some(u => u.reporting_manager === user.id);
+                                            return (
+                                                <SortableItem
+                                                    key={user.id}
+                                                    id={user.id}
+                                                    user={user}
+                                                    highlightManagers={true}
+                                                    hasTeam={hasTeam}
+                                                />
+                                            );
+                                        })}
+                                        {getUnassignedEmployees().length === 0 && (
+                                            <div className="empty-placeholder">All assigned!</div>
                                         )}
-                                        <span>{m.name}</span>
-                                        <span className="badge">{m.designation}</span>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                        <button className="btn-secondary" onClick={() => setShowAddManagerModal(false)}>Cancel</button>
-                    </div>
-                </div>
-            )}
+                                    </SortableContext>
+                                </div>
+                            </div>
 
-            <CustomPopup {...popup} onClose={closePopup} />
-        </div>
+                            {/* Manager Columns */}
+                            <div className="managers-grid">
+                                {displayedManagers.map(manager => (
+                                    <ManagerContainer
+                                        key={manager.id}
+                                        manager={manager}
+                                        employees={getEmployeesForManager(manager.id)}
+                                        onRemoveManager={handleRemoveManagerColumn}
+                                        onUnassignUser={handleUnassignUser}
+                                    />
+                                ))}
+
+                                {/* + Add Manager Button/Card */}
+                                <div
+                                    className="add-manager-card"
+                                    onClick={() => setShowAddManagerModal(true)}
+                                >
+                                    <div className="add-icon">+</div>
+                                    <span>Add Manager</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <DragOverlay>
+                            {activeId ? (
+                                <div className="draggable-item overlay">
+                                    Dragging...
+                                </div>
+                            ) : null}
+                        </DragOverlay>
+                    </DndContext>
+
+                    {/* Simple Modal for Selecting Manager */}
+                    {showAddManagerModal && (
+                        <div className="modal-overlay" onClick={() => setShowAddManagerModal(false)}>
+                            <div className="modal-content" onClick={e => e.stopPropagation()}>
+                                <h3>Select a Reporting Manager to Add</h3>
+                                <div className="manager-selection-list">
+                                    {remainingManagers.length === 0 ? (
+                                        <p>No more available managers.</p>
+                                    ) : (
+                                        remainingManagers.map(m => (
+                                            <div
+                                                key={m.id}
+                                                className="manager-option"
+                                                onClick={() => handleAddManager(m)}
+                                            >
+                                                {m.profile_picture ? (
+                                                    <img
+                                                        src={m.profile_picture.startsWith('http') ? m.profile_picture : `${import.meta.env.VITE_BACKEND_URL}${m.profile_picture}`}
+                                                        alt={m.name}
+                                                        style={{
+                                                            width: '32px',
+                                                            height: '32px',
+                                                            borderRadius: '50%',
+                                                            objectFit: 'cover',
+                                                            marginRight: '0.75rem'
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div className="user-avatar-sm">{m.name.charAt(0)}</div>
+                                                )}
+                                                <span>{m.name}</span>
+                                                <span className="badge">{m.designation}</span>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                                <button className="btn-secondary" onClick={() => setShowAddManagerModal(false)}>Cancel</button>
+                            </div>
+                        </div>
+                    )}
+
+                    <CustomPopup {...popup} onClose={closePopup} />
+                </>
+            )}
+        </>
+    );
+
+    if (embedded) return content;
+
+    return (
+        <DashboardLayout title="Admin Allocation" subtitle="Drag and drop employees to assign reporting managers">
+            {content}
+        </DashboardLayout>
     );
 };
 
 export default AdminAllocation;
+

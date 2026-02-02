@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-// Use environment variable or fallback to localhost
-const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
-const API_URL = `${BASE_URL}/api`;
+// API configuration with environment variable support
+const BASE_URL = import.meta.env.VITE_BACKEND_URL;
+const API_URL = BASE_URL ? `${BASE_URL}/api` : '/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -58,13 +58,12 @@ export const authAPI = {
     resetPassword: (data) => api.post('/auth/reset-password/', data),
 
     // Manager Assessments
-    // Manager Assessments
     getAssessments: () => api.get('/manager/assessments/'),
     createAssessment: (data) => api.post('/manager/assessments/', data),
     updateAssessment: (id, data) => api.put(`/manager/assessments/${id}/`, data),
     deleteAssessment: (id) => api.delete(`/manager/assessments/${id}/`),
     getNotifications: () => api.get('/manager/notifications/'),
-    getAllSubmissions: (searchQuery = '') => api.get(`/manager/admin/submissions/?q=${searchQuery}`),
+    getManagerSubmissions: (searchQuery = '') => api.get(`/manager/admin/submissions/?q=${searchQuery}`),
 
     // Templates
     getTemplates: () => api.get('/manager/templates/'),
@@ -109,6 +108,30 @@ export const authAPI = {
     getSlackWebhooks: () => api.get('/slack/webhooks/'),
     addSlackWebhook: (data) => api.post('/slack/webhooks/', data),
     deleteSlackWebhook: (id) => api.delete(`/slack/webhooks/${id}/`),
+
+    // Super Admin - User Management
+    getAllUsers: () => api.get('/auth/users/'),
+    createUser: (data) => api.post('/auth/users/', data),
+    updateUser: (id, data) => api.put(`/auth/users/${id}/`, data),
+    deleteUser: (id) => api.delete(`/auth/users/${id}/`),
+    adminResetPassword: (id, password) => api.post(`/auth/users/${id}/reset-password/`, { password }),
+
+    // Super Admin - Department Management
+    getDepartments: () => api.get('/auth/departments/'),
+    createDepartment: (data) => api.post('/auth/departments/', data),
+    updateDepartment: (name, data) => api.put(`/auth/departments/${name}/`, data),
+    deleteDepartment: (name) => api.delete(`/auth/departments/${name}/`),
+
+    // Super Admin - Assessment Tracker
+    getAllSubmissions: () => api.get('/auth/submissions/'),
+    grantLatePermission: (submissionId, newDeadline) => api.post(`/auth/submissions/${submissionId}/extend/`, { new_deadline: newDeadline }),
+    sendReminder: (submissionId) => api.post(`/auth/submissions/${submissionId}/remind/`),
+
+    // Super Admin - Audit Logs
+    getAuditLogs: (params) => api.get('/auth/audit-logs/', { params }),
+
+    // Super Admin - Dashboard Stats
+    getDashboardStats: () => api.get('/auth/dashboard-stats/'),
 };
 
 export default api;

@@ -3,19 +3,32 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
+import SuperadminDashboard from './components/SuperadminDashboard';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
-import ManagerDashboard from './components/ManagerDashboard';
-import AdminAllocation from './components/AdminAllocation';
 import UserProfile from './components/UserProfile';
-import AdminAssessments from './components/AdminAssessments';
-import AdminSettings from './components/AdminSettings';
 import AssessmentRunner from './components/AssessmentRunner';
 import ManagerReview from './components/ManagerReview';
 import EmployeeHistory from './components/EmployeeHistory';
-import AdminGlobalHistory from './components/AdminGlobalHistory';
-import AdminSlackSettings from './components/AdminSlackSettings';
+// Consolidated Pages
+import TeamPage from './components/TeamPage';
+import AssessmentsPage from './components/AssessmentsPage';
+import UsersPage from './components/UsersPage';
+import ReportsPage from './components/ReportsPage';
+import SettingsPage from './components/SettingsPage';
 import './index.css';
+
+// Role-based Dashboard Component
+const RoleBasedDashboard = () => {
+  const { user } = useAuth();
+
+  // Show SuperadminDashboard for staff/admin/superuser, regular Dashboard for employees
+  if (user?.is_staff || user?.is_superuser || user?.role === 'employer') {
+    return <SuperadminDashboard />;
+  }
+
+  return <Dashboard />;
+};
 
 // Loading Component
 const LoadingScreen = () => (
@@ -47,6 +60,44 @@ const ProtectedRoute = ({ children }) => {
   // Not logged in -> Login
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
+
+// Super Admin Route - Only allows superusers
+const SuperAdminRoute = ({ children }) => {
+  const { isAuthenticated, user, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user?.is_superuser) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
+
+// Staff Route - Only allows staff/admin users
+const StaffRoute = ({ children }) => {
+  const { isAuthenticated, user, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user?.is_staff) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -111,7 +162,7 @@ function App() {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <RoleBasedDashboard />
               </ProtectedRoute>
             }
           />
@@ -123,54 +174,48 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Consolidated Routes */}
           <Route
-            path="/manager-dashboard"
+            path="/team"
             element={
-              <ProtectedRoute>
-                <ManagerDashboard />
-              </ProtectedRoute>
+              <StaffRoute>
+                <TeamPage />
+              </StaffRoute>
             }
           />
           <Route
-            path="/admin/allocation"
+            path="/assessments"
             element={
-              <ProtectedRoute>
-                <AdminAllocation />
-              </ProtectedRoute>
+              <StaffRoute>
+                <AssessmentsPage />
+              </StaffRoute>
             }
           />
           <Route
-            path="/admin/assessments"
+            path="/users"
             element={
-              <ProtectedRoute>
-                <AdminAssessments />
-              </ProtectedRoute>
+              <SuperAdminRoute>
+                <UsersPage />
+              </SuperAdminRoute>
             }
           />
           <Route
-            path="/admin/submissions"
+            path="/reports"
             element={
-              <ProtectedRoute>
-                <AdminGlobalHistory />
-              </ProtectedRoute>
+              <StaffRoute>
+                <ReportsPage />
+              </StaffRoute>
             }
           />
           <Route
-            path="/admin/settings"
+            path="/settings"
             element={
-              <ProtectedRoute>
-                <AdminSettings />
-              </ProtectedRoute>
+              <StaffRoute>
+                <SettingsPage />
+              </StaffRoute>
             }
           />
-          <Route
-            path="/admin/slack"
-            element={
-              <ProtectedRoute>
-                <AdminSlackSettings />
-              </ProtectedRoute>
-            }
-          />
+          {/* Assessment and Review Routes */}
           <Route
             path="/assessments/:id"
             element={

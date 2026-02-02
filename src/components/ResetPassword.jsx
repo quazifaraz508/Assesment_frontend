@@ -1,66 +1,32 @@
-import { useState, useEffect } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { Loader, CheckCircle, ArrowRight } from 'lucide-react';
 import { authAPI } from '../services/api';
-import '../styles/Auth.css';
+import AuthLayout from './AuthLayout';
 
 const ResetPassword = () => {
-    const [searchParams] = useSearchParams();
-    const navigate = useNavigate();
-    const token = searchParams.get('token');
-
-    const [formData, setFormData] = useState({
-        password: '',
-        password_confirm: ''
-    });
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [error, setError] = useState('');
 
-    useEffect(() => {
-        if (!token) {
-            setError('Invalid reset link. Please request a new password reset.');
-        }
-    }, [token]);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
+    const { uidb64, token } = useParams();
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-
-        if (formData.password !== formData.password_confirm) {
-            setError('Passwords do not match.');
-            return;
-        }
-
-        if (formData.password.length < 8) {
-            setError('Password must be at least 8 characters long.');
-            return;
-        }
+        if (password !== confirmPassword) return setError('Passwords do not match');
+        if (password.length < 8) return setError('Password must be at least 8 characters');
 
         setLoading(true);
-
         try {
-            await authAPI.resetPassword({
-                token,
-                password: formData.password,
-                password_confirm: formData.password_confirm
-            });
+            await authAPI.confirmPasswordReset(uidb64, token, password);
             setSuccess(true);
+            setTimeout(() => navigate('/login'), 3000);
         } catch (err) {
-            if (err.response?.data?.error) {
-                setError(err.response.data.error);
-            } else if (err.response?.data?.password) {
-                setError(err.response.data.password[0]);
-            } else {
-                setError('Failed to reset password. Please try again.');
-            }
+            setError(err.response?.data?.error || 'Failed to reset password.');
         } finally {
             setLoading(false);
         }
@@ -68,84 +34,79 @@ const ResetPassword = () => {
 
     if (success) {
         return (
-            <div className="auth-container">
-                <div className="auth-card">
-                    <div className="auth-header">
-                        <h1>Password Reset Successful!</h1>
-                        <p>Your password has been changed</p>
+            <AuthLayout
+                title="Password Updated"
+                subtitle="Your account is now secure."
+            >
+                <div className="text-center space-y-8">
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-50 text-green-600 mb-2 ring-8 ring-green-50/50 shadow-lg shadow-green-100">
+                        <CheckCircle size={40} />
                     </div>
 
-                    <div className="success-message">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="64" height="64">
-                            <path fillRule="evenodd" d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.734-3.08zm3.094 8.016a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
-                        </svg>
-                        <h3>All Set!</h3>
-                        <p>You can now login with your new password.</p>
-                    </div>
+                    <p className="text-slate-600 text-lg">
+                        Redirecting to login in a moment...
+                    </p>
 
-                    <button
-                        onClick={() => navigate('/login')}
-                        className="auth-button"
+                    <Link
+                        to="/login"
+                        className="block w-full py-4 px-6 bg-violet-700 hover:bg-violet-800 text-white font-bold rounded-xl shadow-lg shadow-violet-600/20 transition-all duration-200 hover:-translate-y-0.5"
                     >
-                        Go to Login
-                    </button>
+                        Login Now
+                    </Link>
                 </div>
-            </div>
+            </AuthLayout>
         );
     }
 
+    const inputClasses = "w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-violet-600 focus:ring-4 focus:ring-violet-50 transition-all outline-none text-slate-900 placeholder:text-slate-400 font-medium text-[15px]";
+    const labelClasses = "block text-sm font-bold text-slate-700 mb-1.5 ml-1";
+
     return (
-        <div className="auth-container">
-            <div className="auth-card">
-                <div className="auth-header">
-                    <h1>Reset Password</h1>
-                    <p>Enter your new password</p>
+        <AuthLayout
+            title="Set New Password"
+            subtitle="Create a strong password for your account."
+        >
+            {error && (
+                <div className="p-4 mb-6 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-semibold flex items-center gap-3">
+                    <span className="flex-shrink-0 w-2 h-2 rounded-full bg-red-500"></span>
+                    {error}
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                    <label className={labelClasses}>New Password</label>
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className={inputClasses}
+                        placeholder="••••••••"
+                        required
+                    />
                 </div>
 
-                {error && <div className="auth-error">{error}</div>}
-
-                <form onSubmit={handleSubmit} className="auth-form">
-                    <div className="form-group">
-                        <label htmlFor="password">New Password *</label>
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            placeholder="Enter new password"
-                            required
-                            minLength={8}
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label htmlFor="password_confirm">Confirm Password *</label>
-                        <input
-                            type="password"
-                            id="password_confirm"
-                            name="password_confirm"
-                            value={formData.password_confirm}
-                            onChange={handleChange}
-                            placeholder="Confirm new password"
-                            required
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        className="auth-button"
-                        disabled={loading || !token}
-                    >
-                        {loading ? 'Resetting...' : 'Reset Password'}
-                    </button>
-                </form>
-
-                <div className="auth-footer">
-                    <p>Remember your password? <Link to="/login">Sign In</Link></p>
+                <div>
+                    <label className={labelClasses}>Confirm Password</label>
+                    <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className={inputClasses}
+                        placeholder="••••••••"
+                        required
+                    />
                 </div>
-            </div>
-        </div>
+
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-4 px-6 bg-violet-700 hover:bg-violet-800 text-white font-bold rounded-xl shadow-lg shadow-violet-600/20 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-70 flex items-center justify-center gap-2 text-[15px]"
+                >
+                    {loading ? <Loader className="animate-spin" size={20} /> : <>Reset Password <ArrowRight size={20} /></>}
+                </button>
+            </form>
+        </AuthLayout>
     );
 };
 

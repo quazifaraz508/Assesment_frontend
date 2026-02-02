@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowLeft, Loader, CheckCircle } from 'lucide-react';
 import { authAPI } from '../services/api';
-import '../styles/Auth.css';
+import AuthLayout from './AuthLayout';
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
     const [error, setError] = useState('');
-    const [success, setSuccess] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -15,88 +16,98 @@ const ForgotPassword = () => {
         setLoading(true);
 
         try {
-            await authAPI.forgotPassword(email);
-            setSuccess(true);
+            await authAPI.requestPasswordReset(email);
+            setSubmitted(true);
         } catch (err) {
-            if (err.response?.data?.email) {
-                setError(err.response.data.email[0]);
-            } else {
-                setError('Failed to send reset email. Please try again.');
-            }
+            setError(err.response?.data?.error || 'Failed to send reset email.');
         } finally {
             setLoading(false);
         }
     };
 
-    if (success) {
+    // Styles - Premium Purple/Violet/Lavender Theme (matching Login/Signup)
+    const inputClasses = "w-full px-5 py-4 bg-white/80 backdrop-blur-sm border border-violet-100 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-100 transition-all outline-none text-slate-900 placeholder:text-slate-400 font-medium text-[15px] shadow-sm shadow-violet-100/50 hover:border-violet-200 hover:shadow-md hover:shadow-violet-100/50";
+
+    if (submitted) {
         return (
-            <div className="auth-container">
-                <div className="auth-card">
-                    <div className="auth-header">
-                        <h1>Check Your Email</h1>
-                        <p>We've sent a password reset link to your email</p>
+            <AuthLayout
+                title="Check your inbox"
+                subtitle="We have sent you a password reset link."
+                leftTitle="Recovery in Progress"
+                leftSubtitle="Follow the instructions in the email to regain access to your dashboard safely."
+            >
+                <div className="text-center space-y-8">
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-50 text-green-600 mb-2 ring-8 ring-green-50/50 shadow-lg shadow-green-100">
+                        <CheckCircle size={40} />
                     </div>
 
-                    <div className="success-message">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="64" height="64">
-                            <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
-                        </svg>
-                        <h3>Email Sent!</h3>
-                        <p>Please check your inbox at <strong>{email}</strong> and click the reset link.</p>
-                        <p className="text-muted">The link will expire in 30 minutes.</p>
-                    </div>
+                    <p className="text-slate-600 text-lg">
+                        A recovery link has been sent to <br /><strong className="text-slate-900 font-bold">{email}</strong>
+                    </p>
 
-                    <div className="auth-footer">
-                        <p>Didn't receive the email? Check your spam folder or</p>
-                        <button
-                            onClick={() => setSuccess(false)}
-                            className="link-button"
+                    <div className="space-y-4 pt-4">
+                        <a
+                            href={`mailto:${email}`}
+                            className="block w-full py-4 px-6 bg-violet-700 hover:bg-violet-800 text-white font-bold rounded-xl shadow-lg shadow-violet-600/20 transition-all duration-200 hover:-translate-y-0.5"
                         >
-                            try again
+                            Open Email App
+                        </a>
+
+                        <button
+                            onClick={() => setSubmitted(false)}
+                            className="block w-full py-3 px-6 text-slate-500 font-bold hover:text-slate-800 transition-colors"
+                        >
+                            Try another email
                         </button>
                     </div>
-
-                    <div className="auth-footer">
-                        <p>Don&apos;t have an account? <Link to="/signup">Sign up</Link></p>
-                    </div>
                 </div>
-            </div>
+            </AuthLayout>
         );
     }
 
     return (
-        <div className="auth-container">
-            <div className="auth-card">
-                <div className="auth-header">
-                    <h1>Forgot Password</h1>
-                    <p>Enter your email to receive a password reset link</p>
+        <AuthLayout
+            title="Reset Password"
+            subtitle="Enter your email to receive instructions."
+            leftTitle="Account Recovery"
+            leftSubtitle="Securely reset your password to ensure your data stays protected."
+        >
+            {error && (
+                <div className="p-4 mb-6 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-semibold flex items-center gap-3">
+                    <span className="flex-shrink-0 w-2 h-2 rounded-full bg-red-500"></span>
+                    {error}
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Email Address</label>
+                    <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className={inputClasses}
+                        placeholder="name@organization.com"
+                        required
+                    />
                 </div>
 
-                {error && <div className="auth-error">{error}</div>}
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-4 px-6 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-700 hover:via-purple-700 hover:to-fuchsia-700 text-white font-bold rounded-xl shadow-xl shadow-violet-500/30 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-violet-500/40 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-[15px]"
+                >
+                    {loading ? <Loader className="animate-spin" size={20} /> : 'Send Reset Link'}
+                </button>
 
-                <form onSubmit={handleSubmit} className="auth-form">
-                    <div className="form-group">
-                        <label htmlFor="email">Email Address *</label>
-                        <input
-                            type="email"
-                            id="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="you@teachingpariksha.com"
-                            required
-                        />
-                    </div>
-
-                    <button type="submit" className="auth-button" disabled={loading}>
-                        {loading ? 'Sending...' : 'Send Reset Link'}
-                    </button>
-                </form>
-
-                <div className="auth-footer">
-                    <p>Remember your password? <Link to="/login">Sign In</Link></p>
+                <div className="text-center mt-6">
+                    <Link to="/login" className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">
+                        <ArrowLeft size={18} />
+                        Back to Login
+                    </Link>
                 </div>
-            </div>
-        </div>
+            </form>
+        </AuthLayout>
     );
 };
 

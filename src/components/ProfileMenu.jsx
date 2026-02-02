@@ -3,7 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import CustomPopup from './CustomPopup';
-import '../styles/Auth.css'; // Ensure we have access to styles
 
 const ProfileMenu = () => {
     const { user, updateUser, logout } = useAuth();
