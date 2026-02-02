@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
 import { Users, CheckCircle, UserCheck, Save } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const AdminSettings = () => {
     const { user } = useAuth();
@@ -202,10 +203,11 @@ const AdminSettings = () => {
                         <div className="text-sm text-gray-500 mb-4 md:mb-0">
                             Last updated: {settings.updated_at ? new Date(settings.updated_at).toLocaleString() : 'Never'}
                         </div>
-                        <button
+                        <Button
                             type="submit"
                             disabled={saving}
-                            className={`flex items-center px-6 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-indigo-100 transition transform hover:-translate-y-0.5 shadow-lg ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            size="lg"
+                            className="shadow-lg"
                         >
                             {saving ? (
                                 <>
@@ -214,11 +216,11 @@ const AdminSettings = () => {
                                 </>
                             ) : (
                                 <>
-                                    <Save className="w-5 h-5 mr-2" />
+                                    <Save className="w-4 h-4 mr-2" />
                                     Save Settings
                                 </>
                             )}
-                        </button>
+                        </Button>
                     </div>
                 </form>
             </div>
