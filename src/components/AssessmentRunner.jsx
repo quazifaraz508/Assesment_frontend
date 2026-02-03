@@ -269,25 +269,25 @@ const AssessmentRunner = () => {
                                 </div>
                             )}
 
-                            {/* Self-Rating Input */}
+                            {/* Self-Rating Dropdown */}
                             <div className="mt-4 p-4 bg-white border border-violet-200 rounded-xl flex items-center gap-4">
                                 <label className="text-slate-600 font-semibold text-sm whitespace-nowrap">
                                     Self Rating:
                                 </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    max={q.max_score || 10}
-                                    step="0.1"
+                                <select
                                     value={ratings[q.id] ?? ''}
                                     onChange={(e) => handleRatingChange(q.id, e.target.value)}
                                     disabled={isSubmitted}
-                                    placeholder={`0-${q.max_score || 10}`}
-                                    className={`w-20 px-3 py-2 bg-violet-50 border rounded-lg text-center font-bold ${(showValidationErrors && (ratings[q.id] === undefined || ratings[q.id] === ''))
-                                            ? 'border-red-400 bg-red-50'
-                                            : 'border-violet-200'
-                                        } ${isSubmitted ? 'bg-slate-100 cursor-not-allowed' : ''}`}
-                                />
+                                    className={`px-4 py-2.5 bg-violet-50 border rounded-lg font-bold text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all ${(showValidationErrors && (ratings[q.id] === undefined || ratings[q.id] === ''))
+                                        ? 'border-red-400 bg-red-50'
+                                        : 'border-violet-200 hover:border-violet-300'
+                                        } ${isSubmitted ? 'bg-slate-100 cursor-not-allowed opacity-70' : ''}`}
+                                >
+                                    <option value="">Select</option>
+                                    {Array.from({ length: q.max_score || 10 }, (_, i) => i + 1).map(score => (
+                                        <option key={score} value={score}>{score}</option>
+                                    ))}
+                                </select>
                                 <span className="text-slate-400 text-sm">/ {q.max_score || 10}</span>
                                 {showValidationErrors && (ratings[q.id] === undefined || ratings[q.id] === '') && (
                                     <span className="text-red-500 text-xs font-medium">Required</span>
